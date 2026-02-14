@@ -3,9 +3,12 @@
 ## High Priority
 
 - [ ] Implement `data download` command in CLI to fetch data from all sources
+- [ ] Implement `data format` command to export SQLite → JSON for frontend
 - [ ] Download GeoJSON country boundaries (datasets/geo-countries or Natural Earth Data)
-- [ ] Add native country names to country data
+- [ ] Create data-loader.js for merging GeoJSON + CLI JSON files
 - [ ] Load GeoJSON on map for clickable country polygons (replace sample markers)
+- [ ] Build popup with graceful fallback (works before and after anthem data available)
+- [ ] Add native country names to country data
 - [ ] Customize OpenStreetMap tiles to show only country names (investigate Stamen, MapBox, or custom tiles)
 - [ ] Add audio file URL to map popup widget when clicking countries
 - [ ] Implement efficient index.json loading strategy to reduce initial page load
@@ -40,24 +43,38 @@
 ## Features
 
 ### Data Management
+- [ ] Implement `data download` command - fetch from REST Countries, Wikidata, Wikimedia Commons
+- [ ] Implement `data format` command - export SQLite to JSON files for frontend
+- [ ] Generate anthems.json (anthem metadata indexed by ISO country code)
+- [ ] Generate audio.json (audio file URLs indexed by audio ID)
+- [ ] Generate countries-metadata.json (extended country info indexed by ISO code)
+- [ ] Generate index.json (data manifest with metadata and stats)
+- [ ] Add data validation checks before formatting to JSON
+- [ ] Implement CLI output directory flag: `--output hugo/site/static/data`
 - [ ] Add `data refresh` command to update existing data
 - [ ] Implement incremental updates (only fetch changed data)
-- [ ] Add data validation checks before formatting to JSON
 - [ ] Create cache system for API responses
 - [ ] Add `data clean` command to remove old/invalid data
 - [ ] Support for multiple audio recordings per anthem (instrumental, vocal, historical)
 
 ### Map Features
-- [ ] Download and integrate GeoJSON country boundaries
+- [ ] Download and integrate GeoJSON country boundaries (datasets/geo-countries)
 - [ ] Replace sample markers with clickable country polygons
+- [ ] Create data-loader.js to handle multiple data sources (GeoJSON + CLI JSON files)
+- [ ] Implement data merging by ISO 3166-1 alpha-3 country codes
+- [ ] Build popup rendering with graceful fallback when anthem data not available
 - [ ] Implement country highlighting on hover
-- [ ] Add country names in native language
+- [ ] Add country names in native language (from CLI-generated metadata)
+- [ ] Add audio player widget to popup (when audio.json available)
+- [ ] Display anthem metadata in popup (name, composer, adoption date)
 - [ ] Optimize map tile loading for country-name-only view
 - [ ] Add map filtering (by region, by date, etc.)
 - [ ] Create custom map style focusing on countries
 - [ ] Add zoom restrictions to prevent over-zooming
 - [ ] Implement smooth pan animations between countries
 - [ ] Add "fly to country" feature from search
+- [ ] Add loading spinner while data loads
+- [ ] Add error handling for failed data loads
 
 ### Game & Leaderboard (NEW)
 - [ ] Design game UI mockups

@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	CurrentSchemaVersion = 1
+	CurrentSchemaVersion = 2
 )
 
 func GetDBPath() string {
@@ -48,6 +48,12 @@ func GetDB() (*sql.DB, error) {
 		if err := initSchema(db); err != nil {
 			db.Close()
 			return nil, fmt.Errorf("failed to initialize schema: %w", err)
+		}
+	} else {
+		// Apply migrations if needed
+		if err := applyMigrations(db); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("failed to apply migrations: %w", err)
 		}
 	}
 	
@@ -155,9 +161,61 @@ func initSchema(db *sql.DB) error {
 
 	// Insert schema version
 	_, err := db.Exec("INSERT INTO schema_version (version, description) VALUES (?, ?)",
-		CurrentSchemaVersion, "Initial schema")
+		CurrentSchemaVersion, "Initial schema with migrations applied")
 	if err != nil {
 		return fmt.Errorf("failed to insert schema version: %w", err)
+	}
+
+	return nil
+}
+
+// applyMigrations applies any pending schema migrations
+func applyMigrations(db *sql.DB) error {
+	// Get current schema version
+	var currentVersion int
+	err := db.QueryRow("SELECT COALESCE(MAX(version), 0) FROM schema_version").Scan(&currentVersion)
+	if err != nil {
+		return fmt.Errorf("failed to get schema version: %w", err)
+	}
+
+	// If already at current version, nothing to do
+	if currentVersion >= CurrentSchemaVersion {
+		return nil
+	}
+
+	// Apply migration 2 if needed
+	if currentVersion < 2 {
+		migration2 := `
+		-- Update data_sources table
+		ALTER TABLE data_sources ADD COLUMN rate_limit_per_second INTEGER DEFAULT 10;
+		ALTER TABLE data_sources ADD COLUMN requires_auth BOOLEAN DEFAULT 0;
+		ALTER TABLE data_sources ADD COLUMN health_check_endpoint TEXT;
+		ALTER TABLE data_sources ADD COLUMN download_strategy TEXT DEFAULT 'file';
+		ALTER TABLE data_sources ADD COLUMN priority INTEGER DEFAULT 100;
+
+		-- Update countries table
+		ALTER TABLE countries ADD COLUMN geojson_geometry TEXT;
+
+		-- Job logs table
+		CREATE TABLE IF NOT EXISTS job_logs (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			job_id TEXT NOT NULL,
+			level TEXT NOT NULL,
+			message TEXT NOT NULL,
+			source_id TEXT,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (job_id) REFERENCES jobs(id)
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_job_logs_job_id ON job_logs(job_id);
+		CREATE INDEX IF NOT EXISTS idx_job_logs_level ON job_logs(level);
+
+		INSERT INTO schema_version (version, description) VALUES (2, 'Data sources and jobs enhancement');
+		`
+
+		if _, err := db.Exec(migration2); err != nil {
+			return fmt.Errorf("failed to apply migration 2: %w", err)
+		}
 	}
 
 	return nil

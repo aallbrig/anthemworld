@@ -78,112 +78,95 @@ function initMap() {
     // Load country boundaries
     loadCountryBoundaries();
     
-    // Add sample markers for demonstration (remove when GeoJSON loaded)
-    addSampleMarkers();
+    // Sample markers disabled - using GeoJSON instead
+    // Uncomment below if GeoJSON fails to load
+    // addSampleMarkers();
 }
 
 function loadCountryBoundaries() {
-    // TODO: Implement GeoJSON loading
-    // This will replace sample markers with clickable country polygons
-    // 
-    // When user clicks anywhere in a country:
-    // 1. Highlight the country polygon
-    // 2. Show popup with country info and anthem details
-    // 3. Include audio player in popup
-    //
-    // Example implementation:
-    /*
     fetch('/data/countries.geojson')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to load country data');
+            }
+            return response.json();
+        })
         .then(data => {
             countriesLayer = L.geoJSON(data, {
                 style: styleCountry,
                 onEachFeature: onEachCountry
             }).addTo(map);
+            
+            console.log('✓ Loaded', data.features.length, 'countries');
         })
-        .catch(error => console.error('Error loading country data:', error));
-    */
-    
-    console.log('TODO: Load countries.geojson with country boundaries');
-    console.log('See docs/research.md for data source recommendations');
+        .catch(error => {
+            console.error('Error loading country boundaries:', error);
+            console.log('Falling back to sample markers');
+            addSampleMarkers();
+        });
 }
 
-function style(feature) {
+function styleCountry(feature) {
     return {
         fillColor: '#0d6efd',
-        weight: 2,
+        weight: 1,
         opacity: 1,
         color: 'white',
-        fillOpacity: 0.5
+        fillOpacity: 0.3
     };
 }
 
-function onEachFeature(feature, layer) {
-    // Add click, mouseover, and mouseout events to each country
-    layer.on({
-        click: onCountryClick,
-        mouseover: highlightFeature,
-        mouseout: resetHighlight
+function onEachCountry(feature, layer) {
+    const props = feature.properties;
+    const countryName = props.name || props.ADMIN || props.NAME || 'Unknown';
+    
+    // Click handler
+    layer.on('click', function(e) {
+        onCountryClick(e);
     });
     
-    // Bind tooltip with country name (English and native)
-    // TODO: Add native country names to GeoJSON properties
-    const countryName = feature.properties.name || feature.properties.ADMIN || 'Unknown';
-    const nativeName = feature.properties.native_name || ''; // Add this property to data
+    // Hover highlight
+    layer.on('mouseover', function(e) {
+        const layer = e.target;
+        layer.setStyle({
+            fillOpacity: 0.6,
+            weight: 2
+        });
+    });
     
-    const tooltipContent = nativeName 
-        ? `<strong>${countryName}</strong><br><em>${nativeName}</em>`
-        : `<strong>${countryName}</strong>`;
+    layer.on('mouseout', function(e) {
+        countriesLayer.resetStyle(e.target);
+    });
     
-    layer.bindTooltip(tooltipContent, {
+    // Tooltip on hover
+    layer.bindTooltip(countryName, {
         permanent: false,
         direction: 'top',
         className: 'country-tooltip'
     });
 }
 
-function highlightFeature(e) {
-    const layer = e.target;
-    layer.setStyle({
-        weight: 3,
-        fillOpacity: 0.7
-    });
-    layer.bringToFront();
-}
-
-function resetHighlight(e) {
-    countriesLayer.resetStyle(e.target);
-}
-
 function onCountryClick(e) {
     const layer = e.target;
     const props = layer.feature.properties;
     
-    // Get country name from various possible property names
+    // Try multiple property names (different GeoJSON sources use different names)
     const countryName = props.name || props.ADMIN || props.NAME || 'Unknown Country';
-    const countryCode = props.iso_a3 || props.ISO_A3 || props.id || '';
+    const isoCode = props.iso_a3 || props.ISO_A3 || props.id || '';
     
-    // TODO: Fetch anthem data from /data/anthems.json using country code
-    // For now, use placeholder data
-    const anthemData = {
-        name: props.anthem || 'Data not available',
-        adopted: props.anthemDate || 'Unknown',
-        nativeName: props.native_name || countryName
-    };
-    
-    // Create popup content
+    // Simple popup for MVP - just country name
     const popupContent = `
         <div class="country-popup">
             <h4>${countryName}</h4>
-            ${anthemData.nativeName !== countryName ? `<p class="native-name"><em>${anthemData.nativeName}</em></p>` : ''}
-            <p><strong>National Anthem:</strong> ${anthemData.name}</p>
-            <p><strong>Adopted:</strong> ${anthemData.adopted}</p>
-            <p class="text-muted small">TODO: Add audio player widget here</p>
-            <p class="text-muted small">See docs/game.md for game feature integration</p>
+            ${isoCode ? `<p class="text-muted small">ISO Code: ${isoCode}</p>` : ''}
+            <hr class="my-2">
+            <p class="text-muted small mb-0">
+                <em>Anthem data coming soon!</em><br>
+                Run <code>worldanthem data download</code> to populate
+            </p>
         </div>
     `;
     
-    // Open popup at clicked location
     layer.bindPopup(popupContent).openPopup();
 }
 
