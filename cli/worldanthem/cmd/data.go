@@ -26,6 +26,13 @@ var statusCmd = &cobra.Command{
 		
 		fmt.Println()
 		
+		// Call data sources status
+		if err := dataSourcesCmd.RunE(cmd, args); err != nil {
+			return err
+		}
+		
+		fmt.Println()
+		
 		// Call jobs status
 		if err := jobsStatusCmd.RunE(cmd, args); err != nil {
 			return err
@@ -97,13 +104,50 @@ var dataSourcesCmd = &cobra.Command{
 	Long:  `Check the health status of all configured data sources.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Data Sources Status")
-		fmt.Println("===================")
-		fmt.Println("TODO: Implement data source health checks")
-		fmt.Println("\nPlanned sources:")
-		fmt.Println("  - REST Countries API")
-		fmt.Println("  - Wikidata SPARQL")
-		fmt.Println("  - Wikimedia Commons API")
-		fmt.Println("  - Wikipedia API")
+		fmt.Println("===================\n")
+		
+		ctx := context.Background()
+		allSources := sources.AllSources
+		
+		if len(allSources) == 0 {
+			fmt.Println("No data sources configured.")
+			return nil
+		}
+		
+		for i, source := range allSources {
+			if i > 0 {
+				fmt.Println()
+			}
+			
+			fmt.Printf("[%d] %s\n", i+1, source.Name())
+			fmt.Printf("    ID:   %s\n", source.ID())
+			fmt.Printf("    Type: %s\n", source.Type())
+			fmt.Printf("    URL:  %s\n", source.URL())
+			
+			// Perform health check
+			fmt.Print("    Health: Checking...")
+			health := source.HealthCheck(ctx)
+			
+			// Move cursor back and clear line
+			fmt.Print("\r    Health: ")
+			
+			if health.Healthy {
+				fmt.Printf("✓ Healthy")
+			} else {
+				fmt.Printf("✗ Unhealthy")
+			}
+			
+			fmt.Printf(" (%dms)\n", health.ResponseTime)
+			
+			if health.StatusCode > 0 {
+				fmt.Printf("    Status Code: %d\n", health.StatusCode)
+			}
+			
+			if health.Message != "OK" {
+				fmt.Printf("    Message: %s\n", health.Message)
+			}
+		}
+		
 		return nil
 	},
 }
