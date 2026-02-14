@@ -1,9 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/anthemworld/cli/pkg/db"
+	"github.com/anthemworld/cli/pkg/jobs"
+	"github.com/anthemworld/cli/pkg/sources"
 	"github.com/spf13/cobra"
 )
 
@@ -111,8 +116,26 @@ var dataFormatCmd = &cobra.Command{
 		format, _ := cmd.Flags().GetString("format")
 		output, _ := cmd.Flags().GetString("output")
 		
+		// Create output directory if it doesn't exist (mkdir -p behavior)
+		absOutput, err := filepath.Abs(output)
+		if err != nil {
+			return fmt.Errorf("failed to resolve output path: %w", err)
+		}
+		
+		if err := os.MkdirAll(absOutput, 0755); err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
+		}
+		
 		fmt.Printf("Data Format: %s\n", format)
-		fmt.Printf("Output Directory: %s\n", output)
+		fmt.Printf("Output Directory: %s\n", absOutput)
+		
+		// Check if directory is writable
+		testFile := filepath.Join(absOutput, ".write-test")
+		if err := os.WriteFile(testFile, []byte("test"), 0644); err != nil {
+			return fmt.Errorf("output directory is not writable: %w", err)
+		}
+		os.Remove(testFile)
+		
 		fmt.Println("\nTODO: Implement data formatting")
 		fmt.Println("This command will generate:")
 		fmt.Println("  - index.json (metadata and file references)")
@@ -125,6 +148,66 @@ var dataFormatCmd = &cobra.Command{
 	},
 }
 
+var dataDownloadCmd = &cobra.Command{
+	Use:   "download",
+	Short: "Download data from sources",
+	Long:  `Download data from all or specified data sources.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		database, err := db.GetDB()
+		if err != nil {
+			return fmt.Errorf("failed to get database: %w", err)
+		}
+		defer database.Close()
+
+		fmt.Println("=== Data Download ===\n")
+
+		// Create job
+		jobID, err := jobs.CreateJob(database, "data-download", map[string]interface{}{
+			"source": "geo-countries-geojson",
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create job: %w", err)
+		}
+
+		fmt.Printf("Created job: %s\n\n", jobID)
+
+		// Create logger
+		logger := jobs.NewJobLogger(database, jobID)
+
+		// Start job
+		if err := jobs.StartJob(database, jobID); err != nil {
+			return fmt.Errorf("failed to start job: %w", err)
+		}
+		logger.Info("Starting download")
+
+		// Get GeoJSON source
+		source := sources.NewGeoJSONSource()
+
+		// Download
+		ctx := context.Background()
+		if err := source.Download(ctx, database, logger); err != nil {
+			jobs.FailJob(database, jobID, err.Error())
+			logger.Errorf("Download failed: %v", err)
+			return err
+		}
+
+		// Complete job
+		if err := jobs.CompleteJob(database, jobID); err != nil {
+			return fmt.Errorf("failed to complete job: %w", err)
+		}
+		logger.Info("Download completed successfully")
+
+		fmt.Println("\n✓ Download complete!")
+		fmt.Printf("\nGeoJSON data stored in database")
+		fmt.Printf("\nCached at: ~/.cache/anthemworld/countries.geojson\n")
+		fmt.Printf("\nNext steps:")
+		fmt.Printf("\n  1. Copy to frontend: cp ~/.cache/anthemworld/countries.geojson hugo/site/static/data/")
+		fmt.Printf("\n  2. Or run: worldanthem data format --output hugo/site/static/data\n")
+
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(dataCmd)
@@ -133,6 +216,7 @@ func init() {
 	dataCmd.AddCommand(dataStatusCmd)
 	dataCmd.AddCommand(dataSourcesCmd)
 	dataCmd.AddCommand(dataFormatCmd)
+	dataCmd.AddCommand(dataDownloadCmd)
 	
 	dataFormatCmd.Flags().StringP("format", "f", "json", "Output format (json)")
 	dataFormatCmd.Flags().StringP("output", "o", "./output", "Output directory")

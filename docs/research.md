@@ -89,15 +89,36 @@
 
 **For clickable country polygons on the map, we need GeoJSON/TopoJSON data with country boundaries.**
 
-#### Natural Earth Data ⭐ RECOMMENDED
-- **Source**: Natural Earth (naturalearthdata.com)
-- **URL**: https://www.naturalearthdata.com/downloads/
-- **Data Available**: High-quality country boundaries in multiple resolutions
-- **Format**: Shapefile, GeoJSON
-- **Resolutions**: 
-  - 1:10m (high detail, ~50MB) - Best for zoom levels
-  - 1:50m (medium detail, ~5MB) - Good balance
-  - 1:110m (low detail, ~1MB) - Fast loading, suitable for world view
+#### johan/world.geo.json ⭐ RECOMMENDED FOR MVP
+- **Source**: GitHub repo by @johan
+- **URL**: https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json
+- **Data Available**: Country boundaries with simple clean structure
+- **Format**: GeoJSON
+- **Size**: 251KB (fast loading)
+- **Features**: 180 countries
+- **Properties**: 
+  - `id`: ISO 3-letter code (e.g. "USA", "GBR")
+  - `name`: Country name (e.g. "United States of America")
+- **Health Check**: HTTP GET, expect 200 and Content-Type: text/plain
+- **Notes**: Simple, clean, perfect for MVP. Easy to parse.
+
+#### Natural Earth Data (Alternative - More Detailed)
+- **Source**: Natural Earth (via nvkelso/natural-earth-vector GitHub)
+- **URL**: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson
+- **Data Available**: High-quality country boundaries with extensive metadata
+- **Format**: GeoJSON
+- **Size**: 820KB (110m resolution - lowest detail, still good for world view)
+- **Features**: 177 countries
+- **Properties**: Very comprehensive (150+ fields) including:
+  - `ISO_A3`, `ISO_A2`: ISO codes
+  - `NAME`, `NAME_LONG`: English names
+  - `NAME_*`: Names in many languages (AR, ZH, FR, ES, etc.)
+  - `ADMIN`: Administrative name
+  - `POP_EST`: Population estimate
+  - `GDP_MD`: GDP data
+  - `WIKIDATAID`: Wikidata ID for linking
+- **Health Check**: HTTP GET, expect 200
+- **Notes**: More detailed, better for future enhancements
 - **Download**: Direct download of GeoJSON files
 - **Health Check**: HTTP GET to download endpoint
 - **Notes**: 
