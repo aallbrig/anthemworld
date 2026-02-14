@@ -1,0 +1,113 @@
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+#map {
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.leaflet-popup-content {
+    margin: 15px;
+    min-width: 200px;
+}
+
+.leaflet-popup-content h4 {
+    margin-top: 0;
+    color: #0d6efd;
+}
+
+#qrcode-container {
+    background: white;
+    padding: 10px;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+#qrcode-container canvas,
+#qrcode-container img {
+    display: block;
+}
+
+.card {
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.audio-player {
+    max-width: 200px;
+}
+
+footer {
+    margin-top: auto;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* Country tooltip styling */
+.country-tooltip {
+    font-size: 14px;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #0d6efd;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.country-tooltip strong {
+    color: #0d6efd;
+}
+
+.country-tooltip em {
+    color: #6c757d;
+    font-size: 12px;
+}
+
+/* Country popup styling */
+.country-popup {
+    min-width: 250px;
+}
+
+.country-popup h4 {
+    color: #0d6efd;
+    margin-bottom: 8px;
+}
+
+.country-popup .native-name {
+    color: #6c757d;
+    font-style: italic;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+/* Loading spinner */
+.spinner-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #map {
+        height: 400px !important;
+    }
+    
+    .display-3 {
+        font-size: 2.5rem;
+    }
+}

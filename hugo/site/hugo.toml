@@ -1,0 +1,13 @@
+baseURL = 'http://localhost:1313/'
+languageCode = 'en-us'
+title = 'Anthem World - National Anthems of the World'
+theme = ''
+
+[params]
+  description = "Explore the national anthems of all 193 UN-recognized countries through an interactive world map"
+  author = "Anthem World"
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
