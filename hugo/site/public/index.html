@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+	<meta name="generator" content="Hugo 0.123.7"><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=8889&amp;path=livereload" data-no-instant defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Explore the national anthems of all 193 UN-recognized countries through an interactive world map">
+    <title>Anthem World - National Anthems of the World</title>
+    
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+    
+    
+    <link rel="stylesheet" href="/css/style.css">
+    
+    
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+            🌍 Anthem World
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/map/">Map</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/countries/">Countries</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+    
+    <main>
+        
+<div class="container my-5">
+    <h1>Welcome to Anthem World</h1>
+    <div class="text-center mb-5">
+    <h1 class="display-3">🌍 Anthem World 🎵</h1>
+    <p class="lead">Discover the national anthems of all 193 UN-recognized countries</p>
+</div>
+<div class="row g-4 mb-5">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h2 class="card-title">🗺️ Interactive Map</h2>
+                <p class="card-text">Click on any country to view its national anthem information and listen to the music that represents each nation.</p>
+                <a href="/map/" class="btn btn-primary">Explore the Map</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <h2 class="card-title">📊 Countries Table</h2>
+                <p class="card-text">Browse, search, and filter through all countries. View detailed information about each anthem including composer, date, and more.</p>
+                <a href="/countries/" class="btn btn-primary">View All Countries</a>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-12">
+        <h2>About Anthem World</h2>
+        <p>National anthems are powerful symbols of national identity and pride. Each anthem tells a unique story about a country's history, values, and aspirations. Anthem World brings together all 193 UN-recognized countries' national anthems in one interactive experience.</p>
+<pre><code>    &lt;h3 class=&quot;mt-4&quot;&gt;Features&lt;/h3&gt;
+    &lt;ul&gt;
+        &lt;li&gt;&lt;strong&gt;Interactive World Map:&lt;/strong&gt; Click any country to instantly view its anthem information&lt;/li&gt;
+        &lt;li&gt;&lt;strong&gt;Audio Playback:&lt;/strong&gt; Listen to each national anthem (coming soon)&lt;/li&gt;
+        &lt;li&gt;&lt;strong&gt;Searchable Database:&lt;/strong&gt; Find countries by name, anthem title, or other criteria&lt;/li&gt;
+        &lt;li&gt;&lt;strong&gt;Comprehensive Information:&lt;/strong&gt; Learn about composers, adoption dates, and historical context&lt;/li&gt;
+    &lt;/ul&gt;
+    
+    &lt;h3 class=&quot;mt-4&quot;&gt;Data Sources&lt;/h3&gt;
+    &lt;p&gt;Our data comes from trusted open sources including:&lt;/p&gt;
+    &lt;ul&gt;
+        &lt;li&gt;REST Countries API for country information&lt;/li&gt;
+        &lt;li&gt;Wikidata for anthem metadata&lt;/li&gt;
+        &lt;li&gt;Wikimedia Commons for audio recordings&lt;/li&gt;
+    &lt;/ul&gt;
+&lt;/div&gt;
+</code></pre>
+</div>
+
+</div>
+
+    </main>
+    
+    <footer class="bg-dark text-white mt-5 py-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <h5>Anthem World</h5>
+                <p class="text-muted">Explore the national anthems of 193 UN-recognized countries.</p>
+            </div>
+            <div class="col-md-3">
+                <h6>Quick Links</h6>
+                <ul class="list-unstyled">
+                    <li><a href="/" class="text-muted text-decoration-none">Home</a></li>
+                    <li><a href="/map/" class="text-muted text-decoration-none">Interactive Map</a></li>
+                    <li><a href="/countries/" class="text-muted text-decoration-none">Countries Table</a></li>
+                </ul>
+            </div>
+            <div class="col-md-3">
+                <h6>Share This Page</h6>
+                <div id="qrcode-container"></div>
+                <p class="text-muted small mt-2">Scan to share: <span id="current-url" class="text-break">http://localhost:8889/</span></p>
+            </div>
+        </div>
+        <hr class="bg-secondary">
+        <div class="row">
+            <div class="col-12 text-center">
+                <p class="mb-0 text-muted">&copy; 2026 Anthem World. Data sources: REST Countries API, Wikidata, Wikimedia Commons.</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="/js/qrcode-widget.js"></script>
+
+    
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    
+</body>
+</html>

@@ -1,0 +1,31 @@
+<footer class="bg-dark text-white mt-5 py-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <h5>Anthem World</h5>
+                <p class="text-muted">Explore the national anthems of 193 UN-recognized countries.</p>
+            </div>
+            <div class="col-md-3">
+                <h6>Quick Links</h6>
+                <ul class="list-unstyled">
+                    <li><a href="/" class="text-muted text-decoration-none">Home</a></li>
+                    <li><a href="/map/" class="text-muted text-decoration-none">Interactive Map</a></li>
+                    <li><a href="/countries/" class="text-muted text-decoration-none">Countries Table</a></li>
+                </ul>
+            </div>
+            <div class="col-md-3">
+                <h6>Share This Page</h6>
+                <div id="qrcode-container"></div>
+                <p class="text-muted small mt-2">Scan to share: <span id="current-url" class="text-break">{{ .Permalink }}</span></p>
+            </div>
+        </div>
+        <hr class="bg-secondary">
+        <div class="row">
+            <div class="col-12 text-center">
+                <p class="mb-0 text-muted">&copy; 2026 Anthem World. Data sources: REST Countries API, Wikidata, Wikimedia Commons.</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="/js/qrcode-widget.js"></script>
