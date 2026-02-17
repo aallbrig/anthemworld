@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/anthemworld/cli/pkg/db"
 	"github.com/anthemworld/cli/pkg/jobs"
 	"github.com/anthemworld/cli/pkg/sources"
 	"github.com/spf13/cobra"
 )
+
+// Helper function to join table names
+func joinTables(tables []string) string {
+	return strings.Join(tables, ", ")
+}
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
@@ -106,6 +112,12 @@ var dataSourcesCmd = &cobra.Command{
 		fmt.Println("Data Sources Status")
 		fmt.Println("===================\n")
 		
+		database, err := db.GetDB()
+		if err != nil {
+			return fmt.Errorf("failed to get database: %w", err)
+		}
+		defer database.Close()
+		
 		ctx := context.Background()
 		allSources := sources.AllSources
 		
@@ -123,6 +135,45 @@ var dataSourcesCmd = &cobra.Command{
 			fmt.Printf("    ID:   %s\n", source.ID())
 			fmt.Printf("    Type: %s\n", source.Type())
 			fmt.Printf("    URL:  %s\n", source.URL())
+			
+			// Check schema status
+			schemaExists, err := source.SchemaExists(database)
+			if err != nil {
+				fmt.Printf("    Schema: ✗ Error checking: %v\n", err)
+			} else if schemaExists {
+				fmt.Printf("    Schema: ✓ Applied (v%d)\n", source.GetSchemaVersion())
+				
+				// Show tables created by this source
+				tables := source.GetTables()
+				if len(tables) > 0 {
+					fmt.Printf("    Tables: %s\n", joinTables(tables))
+				}
+			} else {
+				fmt.Printf("    Schema: ✗ Not applied\n")
+			}
+			
+			// Get data stats if schema exists
+			if schemaExists {
+				stats, err := source.GetDataStats(database)
+				if err != nil {
+					fmt.Printf("    Data: Error: %v\n", err)
+				} else {
+					fmt.Printf("    Data: %d records", stats.RecordCount)
+					if stats.StorageBytes > 0 {
+						fmt.Printf(", ~%.1f MB", float64(stats.StorageBytes)/(1024*1024))
+					}
+					if stats.LastUpdated != "" {
+						fmt.Printf(", updated %s", stats.LastUpdated)
+					}
+					fmt.Println()
+					
+					// Check if needs update
+					needsUpdate, _ := source.NeedsUpdate(database)
+					if needsUpdate {
+						fmt.Println("    Status: ⚠ Needs update")
+					}
+				}
+			}
 			
 			// Perform health check
 			fmt.Print("    Health: Checking...")
@@ -207,7 +258,7 @@ var dataDownloadCmd = &cobra.Command{
 
 		// Create job
 		jobID, err := jobs.CreateJob(database, "data-download", map[string]interface{}{
-			"source": "geo-countries-geojson",
+			"sources": "all",
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create job: %w", err)
@@ -222,31 +273,58 @@ var dataDownloadCmd = &cobra.Command{
 		if err := jobs.StartJob(database, jobID); err != nil {
 			return fmt.Errorf("failed to start job: %w", err)
 		}
-		logger.Info("Starting download")
 
-		// Get GeoJSON source
-		source := sources.NewGeoJSONSource()
-
-		// Download
+		// Download from all sources
 		ctx := context.Background()
-		if err := source.Download(ctx, database, logger); err != nil {
-			jobs.FailJob(database, jobID, err.Error())
-			logger.Errorf("Download failed: %v", err)
-			return err
+		allSources := sources.AllSources
+		successCount := 0
+		failCount := 0
+
+		for i, source := range allSources {
+			fmt.Printf("[%d/%d] %s\n", i+1, len(allSources), source.Name())
+			logger.Infof("Starting download from %s", source.Name())
+
+			// Download from source
+			if err := source.Download(ctx, database, logger); err != nil {
+				logger.Errorf("Failed to download from %s: %v", source.Name(), err.Error())
+				fmt.Printf("    ✗ Failed: %v\n\n", err)
+				failCount++
+				continue
+			}
+
+			logger.Infof("✓ Successfully downloaded from %s", source.Name())
+			fmt.Printf("    ✓ Success\n\n")
+			successCount++
+		}
+
+		// Complete or fail job based on results
+		if failCount > 0 && successCount == 0 {
+			// All sources failed
+			errMsg := fmt.Sprintf("All %d sources failed", failCount)
+			jobs.FailJob(database, jobID, errMsg)
+			logger.Error(errMsg)
+			return fmt.Errorf(errMsg)
+		} else if failCount > 0 {
+			// Partial success
+			logger.Warnf("Download completed with %d successes and %d failures", successCount, failCount)
+		} else {
+			// All succeeded
+			logger.Infof("All %d sources downloaded successfully", successCount)
 		}
 
 		// Complete job
 		if err := jobs.CompleteJob(database, jobID); err != nil {
 			return fmt.Errorf("failed to complete job: %w", err)
 		}
-		logger.Info("Download completed successfully")
 
-		fmt.Println("\n✓ Download complete!")
-		fmt.Printf("\nGeoJSON data stored in database")
-		fmt.Printf("\nCached at: ~/.cache/anthemworld/countries.geojson\n")
+		fmt.Println("=== Download Summary ===")
+		fmt.Printf("✓ Success: %d sources\n", successCount)
+		if failCount > 0 {
+			fmt.Printf("✗ Failed: %d sources\n", failCount)
+		}
 		fmt.Printf("\nNext steps:")
-		fmt.Printf("\n  1. Copy to frontend: cp ~/.cache/anthemworld/countries.geojson hugo/site/static/data/")
-		fmt.Printf("\n  2. Or run: worldanthem data format --output hugo/site/static/data\n")
+		fmt.Printf("\n  1. Check status: worldanthem data sources")
+		fmt.Printf("\n  2. Export data: worldanthem data format --output hugo/site/static/data\n")
 
 		return nil
 	},
