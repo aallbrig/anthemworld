@@ -1,102 +1,98 @@
 # TODO List
 
-## High Priority
+## Project Status: ~40% Complete
+MVP foundations are solid. Data collection system works. Frontend needs integration. Game feature is next major milestone.
 
-- [ ] Implement `data download` command in CLI to fetch data from all sources
-- [ ] Implement `data format` command to export SQLite → JSON for frontend
-- [ ] Download GeoJSON country boundaries (datasets/geo-countries or Natural Earth Data)
-- [ ] Create data-loader.js for merging GeoJSON + CLI JSON files
-- [ ] Load GeoJSON on map for clickable country polygons (replace sample markers)
-- [ ] Build popup with graceful fallback (works before and after anthem data available)
-- [ ] Add native country names to country data
-- [ ] Customize OpenStreetMap tiles to show only country names (investigate Stamen, MapBox, or custom tiles)
-- [ ] Add audio file URL to map popup widget when clicking countries
-- [ ] Implement efficient index.json loading strategy to reduce initial page load
-- [ ] Add page to list countries in searchable table with DataTables
-- [ ] Create job resumption functionality for failed downloads
-- [ ] Implement rate limiting per data source in CLI
+---
 
-## Features
+## ✅ Completed
 
-### Game Feature (Hot or Not for Anthems)
-- [ ] Create game page at `/game` with dual anthem players
-- [ ] Implement 5-second minimum listen requirement before voting
-- [ ] Create leaderboard page at `/leaderboard` with rankings
-- [ ] Design and implement ELO ranking system
-- [ ] Track user country via IP geolocation
-- [ ] Set up AWS SAM infrastructure in `./sam/game/`
-- [ ] Set up AWS SAM infrastructure in `./sam/leaderboard/`
-- [ ] Create DynamoDB tables (rankings, votes, sessions, matchup history)
-- [ ] Implement Lambda functions (session, matchup, vote)
-- [ ] Create API Gateway endpoints
-- [ ] Build game frontend with audio controls
-- [ ] Build leaderboard frontend with real-time updates
-- [ ] Add vote analytics and insights
-- [ ] Implement matchmaking algorithm (similar ELO scores)
-- [ ] Add privacy features (IP hashing, session expiry)
-- [ ] Create game analytics dashboard
-- [ ] Add social sharing features
-- [ ] Implement user sessions and tracking
-- [ ] Add detailed country stats pages from game data
-- [ ] See `docs/game.md` for complete feature specification
+### Phase 1: Core Infrastructure (100% Complete)
+- [x] Create initial project structure with Hugo, Go CLI, Playwright tests
+- [x] Set up Hugo site with Bootstrap 5, navigation, footer
+- [x] Integrate Leaflet map with OpenStreetMap tiles
+- [x] Add map click handlers and popup widget
+- [x] Create countries table page with DataTables (search/filter)
+- [x] Set up Go CLI with SQLite database (OS-specific paths)
+- [x] Create database schema in data/schema/
+- [x] Implement CLI commands: status, data status, data sources, jobs status
+- [x] Write comprehensive documentation (README, CONTRIBUTING, research.md, game.md)
+- [x] Add QR code widget implementation
+- [x] Configure Playwright tests (console errors, load time, XHR, map interaction)
 
-## Features
+### Phase 2: Data Collection System (95% Complete)
+- [x] Design DataSource interface and job system architecture
+- [x] Implement GeoJSON Country Boundaries source (177 countries downloaded)
+- [x] Implement REST Countries API source (192 UN members downloaded)
+- [x] Implement Wikidata SPARQL source (192 anthems with metadata downloaded)
+- [x] Implement Wikimedia Commons source (48+ audio recordings, search-based)
+- [x] Add health checks for all data sources
+- [x] Implement `data download` command with parallel job execution
+- [x] Implement `data sources` command with health monitoring
+- [x] Add rate limiting and error handling per source
+- [x] Database contains: 239 countries, 192 anthems, 48+ audio recordings
 
-### Data Management
-- [ ] Implement `data download` command - fetch from REST Countries, Wikidata, Wikimedia Commons
-- [ ] Implement `data format` command - export SQLite to JSON files for frontend
-- [ ] Generate anthems.json (anthem metadata indexed by ISO country code)
-- [ ] Generate audio.json (audio file URLs indexed by audio ID)
-- [ ] Generate countries-metadata.json (extended country info indexed by ISO code)
-- [ ] Generate index.json (data manifest with metadata and stats)
-- [ ] Add data validation checks before formatting to JSON
-- [ ] Implement CLI output directory flag: `--output hugo/site/static/data`
-- [ ] Add `data refresh` command to update existing data
-- [ ] Implement incremental updates (only fetch changed data)
-- [ ] Create cache system for API responses
-- [ ] Add `data clean` command to remove old/invalid data
-- [ ] Support for multiple audio recordings per anthem (instrumental, vocal, historical)
+---
 
-### Map Features
-- [ ] Download and integrate GeoJSON country boundaries (datasets/geo-countries)
-- [ ] Replace sample markers with clickable country polygons
-- [ ] Create data-loader.js to handle multiple data sources (GeoJSON + CLI JSON files)
-- [ ] Implement data merging by ISO 3166-1 alpha-3 country codes
-- [ ] Build popup rendering with graceful fallback when anthem data not available
-- [ ] Implement country highlighting on hover
-- [ ] Add country names in native language (from CLI-generated metadata)
-- [ ] Add audio player widget to popup (when audio.json available)
-- [ ] Display anthem metadata in popup (name, composer, adoption date)
-- [ ] Optimize map tile loading for country-name-only view
-- [ ] Add map filtering (by region, by date, etc.)
-- [ ] Create custom map style focusing on countries
-- [ ] Add zoom restrictions to prevent over-zooming
-- [ ] Implement smooth pan animations between countries
-- [ ] Add "fly to country" feature from search
-- [ ] Add loading spinner while data loads
-- [ ] Add error handling for failed data loads
+## 🚧 In Progress
 
-### Game & Leaderboard (NEW)
+### Phase 2: Data Collection (Final 5%)
+- [ ] **NEXT**: Run full Wikimedia Commons download (~15 mins, rate-limited)
+  - Currently: 48 recordings, Goal: 150-200+ recordings
+- [ ] **NEXT**: Implement `data format` command to export SQLite → JSON
+  - [ ] Create pkg/format package
+  - [ ] Generate anthems.json (anthem metadata by country ISO code)
+  - [ ] Generate audio.json (audio file URLs by recording ID)
+  - [ ] Generate countries-metadata.json (extended country info)
+  - [ ] Generate index.json (data manifest with stats)
+  - [ ] Add CLI flag: `--output hugo/site/static/data`
+
+---
+
+## 📋 Upcoming
+
+### Phase 3: Frontend Integration (0% Complete)
+**Goal**: Connect CLI data to Hugo site, make map fully functional
+
+#### Map Enhancement
+- [ ] Create `data-loader.js` to load all JSON files from CLI export
+- [ ] Merge GeoJSON boundaries with anthem metadata
+- [ ] Update map.js to use real country data instead of sample markers
+- [ ] Add HTML5 audio player widget to country popups
+- [ ] Display anthem metadata (name, composer, date, audio player)
+- [ ] Test popup with graceful fallback (before/after data load)
+- [ ] Add country highlighting on hover
+- [ ] Optimize tile loading for performance
+
+#### Data Display
+- [ ] Update countries table to show anthem data
+- [ ] Add search by anthem name, composer
+- [ ] Add filter by region, has-audio, etc.
+- [ ] Add loading spinners during data fetch
+- [ ] Implement error handling for missing data
+
+#### Testing
+- [ ] Update Playwright tests for new functionality
+- [ ] Test audio playback across browsers
+- [ ] Test on mobile devices
+- [ ] Visual regression tests for map changes
+
+**Success Criteria**: Users can click any country → see anthem info → play audio
+
+---
+
+### Phase 4: Game Feature (0% Complete)
+**See docs/game.md for complete specification**
+
+#### Game Core (MVP)
+- [ ] Set up AWS SAM project in `./sam/game/`
+- [ ] Set up LocalStack for local development
 - [ ] Design game UI mockups
-- [ ] Set up AWS SAM project structure
-- [ ] Create Lambda functions for game logic
-- [ ] Implement ELO ranking algorithm
-- [ ] Build DynamoDB schema
-- [ ] Create API endpoints (matchup, vote, leaderboard)
-- [ ] Implement IP geolocation service
-- [ ] Build game frontend with audio controls
-- [ ] Add 5-second listen timer
-- [ ] Create voting interface
-- [ ] Build leaderboard display
-- [ ] Add real-time ranking updates
-- [ ] Implement session management
-- [ ] Add analytics tracking
-- [ ] Create stats visualization
-- [ ] Add social sharing
-- [ ] Implement privacy controls
-- [ ] Deploy to AWS
-- [ ] Set up CloudFront CDN
-- [ ] Configure monitoring and alerts
+- [ ] Create game page at `/game`
+- [ ] Build dual anthem player interface with waveform visualization
+- [ ] Implement smart listen requirements (3-4s for new, instant for heard)
+- [ ] Create voting interface with satisfying animations
+- [ ] Implement session management (anonymous)
 
 ### CLI Enhancements
 - [ ] Add `jobs resume <job_id>` command
@@ -338,3 +334,163 @@
 - [ ] Add push notifications
 - [ ] Implement referral system
 - [ ] Add regional leaderboards
+
+#### Backend (AWS Lambda + DynamoDB)
+- [ ] Implement ELO ranking algorithm
+- [ ] Create Lambda: GET /api/game/session (create anonymous session)
+- [ ] Create Lambda: GET /api/game/matchup (return two similar-ELO anthems)
+- [ ] Create Lambda: POST /api/game/vote (record vote, update ELO)
+- [ ] Create DynamoDB tables: anthem_rankings, vote_history, sessions, matchup_history
+- [ ] Implement matchmaking logic (standard + wildcard rounds)
+- [ ] Add IP geolocation for user country detection
+- [ ] Implement rate limiting per session
+- [ ] Add validation (listen time, vote limits)
+
+#### Leaderboard
+- [ ] Create leaderboard page at `/leaderboard`
+- [ ] Implement Lambda: GET /api/leaderboard (ranked list)
+- [ ] Implement Lambda: GET /api/leaderboard/country/{id} (detailed stats)
+- [ ] Build leaderboard UI with real-time updates
+- [ ] Add filtering by region, date range
+- [ ] Display ELO history graphs
+- [ ] Add global statistics dashboard
+- [ ] Implement pagination
+
+#### Game Enhancements (Make It Fun!)
+- [ ] Add waveform visualization for audio preview
+- [ ] Implement personal stats tracking (streak, favorites, impact score)
+- [ ] Add end-of-session summary with shareable results
+- [ ] Create voting badges & achievements
+- [ ] Add matchup commentary with humor
+- [ ] Implement wildcard rounds every 5-10 votes
+- [ ] Add post-vote fun facts about anthems
+- [ ] Create personal playlists (favorites, discoveries)
+- [ ] Add regional battle modes
+- [ ] Implement "Your country vs the world" stats
+
+#### Testing & Deployment
+- [ ] Test Lambda functions with sam local
+- [ ] Test game flow with LocalStack
+- [ ] Deploy to AWS dev environment
+- [ ] Set up CloudWatch monitoring
+- [ ] Configure CloudFront CDN
+- [ ] Load testing with multiple concurrent sessions
+- [ ] Security audit (rate limits, input validation)
+
+**Success Criteria**: 10-20 rounds feel addictive, not tedious
+
+---
+
+## 🔮 Future Enhancements
+
+### Data Quality
+- [ ] Handle countries with multiple anthems
+- [ ] Add historical anthem versions
+- [ ] Include unofficial/regional anthems
+- [ ] Add anthem lyrics with translations
+- [ ] Verify all 193 countries have audio
+- [ ] Add data quality scoring system
+- [ ] Implement data validation rules
+
+### Performance
+- [ ] Add service worker for offline map
+- [ ] Implement CDN for audio files
+- [ ] Optimize audio file sizes (compression)
+- [ ] Add lazy loading for country data
+- [ ] Minimize and bundle CSS/JS
+- [ ] Add loading skeletons
+- [ ] Optimize Hugo build time
+
+### Accessibility
+- [ ] Add ARIA labels to all interactive elements
+- [ ] Ensure keyboard navigation works
+- [ ] Test with screen readers (NVDA, JAWS)
+- [ ] Add high contrast mode
+- [ ] Test color contrast ratios (WCAG AA)
+- [ ] Add skip navigation links
+
+### DevOps
+- [ ] Set up CI/CD pipeline
+- [ ] Add automated testing on PRs
+- [ ] Configure automated deployments
+- [ ] Set up monitoring and alerting
+- [ ] Implement automated backups
+- [ ] Create Docker containers
+
+### Security
+- [ ] Add Content Security Policy headers
+- [ ] Implement Subresource Integrity for CDN
+- [ ] Add security headers (HSTS, X-Frame-Options)
+- [ ] Regular dependency security audits
+- [ ] Add CAPTCHA for abuse prevention
+
+---
+
+## 🎯 Stretch Goals
+
+- [ ] Mobile app (React Native)
+- [ ] User accounts with saved favorites
+- [ ] Daily challenges and tournaments
+- [ ] Community-submitted recordings
+- [ ] Spotify/Apple Music integration
+- [ ] Educational resources for schools
+- [ ] API for third-party integrations
+- [ ] Multi-language support (i18n)
+- [ ] Anthem quiz mode
+- [ ] Print-friendly country fact sheets
+
+---
+
+## 📊 Data Improvements (Based on Feedback)
+
+### Wikidata SPARQL
+- [ ] Add filters to exclude historical countries
+- [ ] Query for multi-language anthem names
+- [ ] Get adoption event details
+- [ ] Store raw SPARQL responses for caching
+
+### GeoJSON Boundaries
+- [ ] Switch to Natural Earth 1:50m for better quality
+- [ ] Add WIKIDATAID property for linking
+- [ ] Optimize polygon simplification
+- [ ] Add ISO_A3 matching
+
+### Wikimedia Commons
+- [ ] Improve search to reduce rate limits
+- [ ] Prioritize instrumental versions
+- [ ] Add audio quality detection
+- [ ] Store multiple recordings per country
+- [ ] Add license verification
+
+### Job System
+- [ ] Add weighted rate limits per source
+- [ ] Separate audio download as optional job
+- [ ] Add ETag/Last-Modified for incremental updates
+- [ ] Implement context timeouts per request
+
+---
+
+## 📝 Documentation
+
+- [ ] Add architecture diagram
+- [ ] Create video tutorial
+- [ ] Write CLI command reference
+- [ ] Add API documentation
+- [ ] Create contributor guide with examples
+- [ ] Document deployment process
+- [ ] Add troubleshooting guide
+- [ ] Create FAQ section
+
+---
+
+## 🐛 Known Issues
+
+- Wikimedia Commons: Rate limited after ~50 countries (need longer delays)
+- Some anthem composer/lyricist fields have Wikidata URLs instead of names
+- REST Countries returns 250 countries (need to filter to 192 UN members)
+- Audio recordings vary in quality/format
+
+---
+
+**Last Updated**: 2026-02-17
+**Current Sprint**: Phase 2 completion → Phase 3 (Frontend Integration)

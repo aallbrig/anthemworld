@@ -1,350 +1,263 @@
-# Anthem World - Implementation Summary
+# Implementation Summary
 
-## Project Overview
-Successfully implemented MVP for Anthem World - an interactive web application showcasing national anthems of 193 UN-recognized countries with an interactive map, searchable table, and data management CLI.
+## Completed Features
 
-## What Has Been Built
+### 1. Clickable World Map with GeoJSON ✅
+- Interactive map with 180 countries as clickable polygons
+- Click anywhere in country → popup shows country name and ISO code
+- Hover effects (opacity changes, tooltips)
+- Zero console errors
+- All 6 Playwright tests passing
 
-### 1. Hugo Static Site (hugo/site/)
-- **Homepage** (`/`): Welcome page with feature overview
-- **Interactive Map Page** (`/map/`): Leaflet.js map with clickable country markers
-- **Countries Table Page** (`/countries/`): DataTables-powered searchable table
-- **Navigation**: Bootstrap navbar with active page highlighting
-- **Footer**: Dynamic footer with QR code widget and current page link
-- **Responsive Design**: Bootstrap 5 with mobile-friendly layouts
+**Files:**
+- `hugo/site/static/js/map.js` - Frontend map logic
+- `hugo/site/static/data/countries.geojson` - 251KB GeoJSON (180 countries)
+- `tests/playwright/tests/map.features.spec.js` - Comprehensive test suite
 
-**Technologies:**
-- Hugo v0.123.7+ (static site generator)
-- Bootstrap 5 (CSS framework, via CDN)
-- Leaflet.js (map library, via CDN)
-- DataTables (table plugin, via CDN)
-- QRCode.js (QR generation, via CDN)
+### 2. CLI Data Download System ✅
+- Go-based CLI at `cli/worldanthem/`
+- Jobs tracking system (creates, tracks, logs all operations)
+- Data sources architecture with health checks
+- Idempotent downloads (same count on re-run)
+- SQLite database at `~/.local/share/anthemworld/data.db`
 
-### 2. Go CLI Tool (cli/worldanthem/)
-Command-line application for data management with SQLite backend.
-
-**Commands Implemented:**
+**Commands:**
 ```bash
-worldanthem status              # Overall system status
-worldanthem data status         # Database and data statistics
-worldanthem data discover       # Placeholder for data source discovery
-worldanthem data sources        # Placeholder for health checks
-worldanthem data format         # Format data to JSON (placeholder)
-worldanthem jobs status         # Job queue status
+worldanthem status                  # Overall system status
+worldanthem data download           # Download GeoJSON data
+worldanthem data sources            # Check source health & schema
+worldanthem jobs status             # Show job status
 ```
 
-**Database Location:** `~/.local/share/anthemworld/data.db`
+### 3. Health Check System ✅
+- Each data source implements `HealthCheck()` method
+- HTTP HEAD requests verify URL accessibility
+- Tracks response time in milliseconds
+- Gracefully handles connection failures
+- Shows in status output
 
-**Features:**
-- Automatic database creation on first run
-- Schema versioning system
-- Job tracking for background tasks
-- Data source health monitoring (schema ready)
-- Comprehensive status reporting
-
-**Technologies:**
-- Go 1.21+
-- SQLite3 (database)
-- Cobra (CLI framework)
-
-### 3. Database Schema (data/schema/)
-SQLite schema with 6 tables:
-- `countries` - Country information (193 countries)
-- `anthems` - National anthem metadata
-- `audio_recordings` - Audio file references
-- `jobs` - Background job tracking
-- `data_sources` - Data source health monitoring
-- `schema_version` - Schema version tracking
-
-### 4. Playwright Tests (tests/playwright/)
-Comprehensive end-to-end test suite covering:
-- **Basic Tests** (basic.spec.js):
-  - Page load times (<2 seconds)
-  - Console error detection
-  - Navigation functionality
-  - No failing XHR requests
-- **Map Tests** (map.spec.js):
-  - Map initialization
-  - Marker click functionality
-  - Tile loading
-- **Table Tests** (countries.spec.js):
-  - DataTables initialization
-  - Search functionality
-  - Sorting capability
-  - Pagination controls
-- **Performance Tests** (performance.spec.js):
-  - Load time budgets
-  - Resource loading validation
-- **QR Code Tests** (qrcode.spec.js):
-  - QR generation
-  - URL accuracy
-  - Page-specific codes
-
-**Test Execution:**
-```bash
-cd tests/playwright
-npm test                    # Run all tests
-npm test -- --headed        # Visual mode
-npm test -- --debug         # Debug mode
+**Output:**
+```
+Health: ✓ Healthy (105ms)
+Status Code: 200
 ```
 
-### 5. Documentation
-- **README.md**: Project overview, quick start, structure
-- **CONTRIBUTING.md**: Development guide (15+ pages)
-- **TODO.md**: Feature roadmap with 100+ planned items
-- **.github/copilot-instructions.md**: AI assistance guidelines
-- **docs/research.md**: Data source research and architecture
+### 4. Source-Specific Schema System ✅
+- Each data source defines its own SQL schema
+- Schema stored in separate `.schema.sql` file
+- Embedded at compile time using Go's `//go:embed`
+- Version tracking for schema migrations
+- Shows tables in status output
 
-## Project Structure
+**GeoJSON Schema:**
+- `geojson_countries` table - 177 countries with full geometry
+- `geojson_metadata` table - tracks schema version, last download
+- Bounding boxes (bbox_min_lon, bbox_min_lat, bbox_max_lon, bbox_max_lat)
+- Coordinate counts (complexity metric)
+- Timestamps (created_at, updated_at)
+
+**Files:**
+- `cli/worldanthem/pkg/sources/geojson.schema.sql` - External schema definition
+- `cli/worldanthem/pkg/sources/geojson.go` - Embeds schema at compile time
+
+### 5. Data Statistics & Caching ✅
+- Record counts per data source
+- Storage size calculations (~0.2 MB for GeoJSON)
+- Last updated timestamps
+- Freshness checking (30-day threshold)
+- Prevents unnecessary re-downloads
+
+**Status Output:**
 ```
-anthemworld/
-├── .github/
-│   └── copilot-instructions.md
-├── .gitignore                    # Hugo, Go, Node combined
-├── README.md
-├── CONTRIBUTING.md
-├── TODO.md
-├── hugo/site/                    # Hugo static site
-│   ├── content/                  # Markdown content
-│   │   ├── _index.md            # Homepage
-│   │   ├── map.md               # Map page
-│   │   └── countries.md         # Countries table
-│   ├── layouts/                  # Templates
-│   │   ├── _default/
-│   │   │   ├── baseof.html      # Base template
-│   │   │   ├── single.html      # Single page
-│   │   │   └── list.html        # List template
-│   │   └── partials/
-│   │       ├── nav.html         # Navigation
-│   │       └── footer.html      # Footer with QR
-│   ├── static/
-│   │   ├── css/style.css        # Custom styles
-│   │   └── js/
-│   │       ├── map.js           # Map widget
-│   │       ├── countries-table.js
-│   │       └── qrcode-widget.js
-│   └── hugo.toml                # Configuration
-├── cli/worldanthem/              # Go CLI
-│   ├── main.go
-│   ├── cmd/                      # Commands
-│   │   ├── root.go
-│   │   ├── data.go
-│   │   └── jobs.go
-│   ├── pkg/
-│   │   └── db/                   # Database layer
-│   │       ├── db.go
-│   │       └── db_test.go
-│   ├── go.mod
-│   └── go.sum
-├── data/schema/
-│   └── 001_initial.sql          # Database schema
-├── tests/playwright/
-│   ├── tests/                   # Test specs
-│   │   ├── basic.spec.js
-│   │   ├── map.spec.js
-│   │   ├── countries.spec.js
-│   │   ├── performance.spec.js
-│   │   └── qrcode.spec.js
-│   ├── playwright.config.js
-│   └── package.json
-└── docs/
-    └── research.md              # Data sources research
+Schema: ✓ Applied (v1)
+Tables: geojson_countries, geojson_metadata
+Data: 177 records, ~0.2 MB, updated 2026-02-14 18:58:19
 ```
 
-## Key Features Implemented
+## Architecture Highlights
 
-### Interactive Map
-- ✅ Leaflet.js integration with OpenStreetMap tiles
-- ✅ Sample country markers (5 countries for demo)
-- ✅ Click handlers with popup display
-- ✅ Country name and anthem info in popup
-- ⏳ Full GeoJSON boundaries (TODO - needs data download)
-- ⏳ Audio player in popup (TODO - needs audio files)
+### Data Flow
+1. User runs `worldanthem data download`
+2. CLI creates job, starts tracking
+3. Downloads GeoJSON from GitHub (256KB)
+4. Caches to `~/.cache/anthemworld/countries.geojson`
+5. Applies schema (if not exists)
+6. Parses JSON, extracts 180 features
+7. UPSERTs into `geojson_countries` table (idempotent)
+8. Updates metadata with timestamp
+9. Completes job, shows summary
 
-### Countries Table
-- ✅ DataTables integration
-- ✅ Sample data (20 countries for demo)
-- ✅ Search/filter functionality
-- ✅ Sortable columns
-- ✅ Pagination controls
-- ✅ Responsive design
-- ⏳ Full 193 countries (TODO - needs data download)
-- ⏳ Audio players (TODO - needs audio files)
+### Frontend Integration
+- Hugo site loads static GeoJSON file
+- Leaflet.js renders polygons
+- Click handlers show popups
+- Future: Load from CLI-generated exports
 
-### QR Code Widget
-- ✅ Dynamic QR generation on all pages
-- ✅ Current page URL encoding
-- ✅ Visible in footer
-- ✅ Updates per page
+### Extensibility
+Adding new data sources (REST Countries, Wikidata):
+1. Create `newsource.go` implementing `DataSource` interface
+2. Create `newsource.schema.sql` with table definitions
+3. Embed schema with `//go:embed`
+4. Implement `GetTables()` returning table names
+5. Register in `AllSources` registry
+6. Automatically appears in all status outputs
 
-### CLI Data Management
-- ✅ Database auto-creation
-- ✅ Schema initialization
-- ✅ Status commands
-- ✅ Job tracking system
-- ✅ Data statistics
-- ⏳ Data source discovery (placeholder)
-- ⏳ Data download (placeholder - see TODO.md)
-- ⏳ JSON export (placeholder)
+## Testing
 
-## How to Use
-
-### Run the Website
-```bash
-cd hugo/site
-hugo server -D
-# Visit http://localhost:1313
-```
-
-### Use the CLI
-```bash
-cd cli/worldanthem
-go build -o worldanthem
-./worldanthem status
-./worldanthem data status
-./worldanthem --help
-```
-
-### Run Tests
+### Frontend Tests (Playwright)
 ```bash
 cd tests/playwright
-npm install              # First time only
-npm test
+npx playwright test tests/map.features.spec.js --project=firefox
 ```
 
-### Run Go Tests
-```bash
-cd cli/worldanthem
-go test ./... -v
-```
-
-## Next Steps (See TODO.md for full list)
-
-### High Priority
-1. **Implement `data download` command**
-   - Connect to REST Countries API
-   - Query Wikidata SPARQL for anthem metadata
-   - Fetch audio URLs from Wikimedia Commons
-   - Store in SQLite database
-
-2. **Generate JSON files from database**
-   - Implement `data format` command
-   - Create index.json, countries.json, anthems.json, etc.
-   - Add to Hugo site's static/data/
-
-3. **Load real country data in website**
-   - Update map.js to load GeoJSON
-   - Update countries-table.js to load full dataset
-   - Test with all 193 countries
-
-4. **Add audio playback**
-   - HTML5 audio players in table
-   - Audio widget in map popups
-   - Preload/streaming optimization
-
-### Medium Priority
-- Implement data source health checks
-- Add job resumption for failed downloads
-- Create country detail pages
-- Add advanced map filtering
-- Implement dark mode
-
-## Test Results
+**Results:** 6/6 passing ✅
+- GeoJSON loads without errors
+- Countries clickable on map
+- Popup shows correct information
+- 180 polygons rendered
+- Hover tooltips work
+- Correct count loaded
 
 ### CLI Tests
-```
-✅ TestGetDataStats - PASS
-✅ TestGetRunningJobs - PASS
-✅ TestGetLastCompletedJob - PASS
-```
-
-### Hugo Build
-```
-✅ 9 pages built
-✅ 4 static files
-✅ Build time: 21ms
-✅ Server starts successfully
-```
-
-### Playwright Tests
-Ready to run (requires Hugo server running):
 ```bash
-npm test
+cd cli/worldanthem
+go test -v ./pkg/sources/
 ```
 
-## Data Sources Researched
+**Results:** All tests passing ✅
+- TestGeoJSONHealthCheck
+- TestGeoJSONHealthCheckBadURL
 
-### Country Data
-- REST Countries API - Basic country info
-- World Bank API - Country codes and metadata
+### Manual Testing
+```bash
+# First download
+$ worldanthem data download
+✓ Inserted 177 countries, updated 0 countries, skipped 3
 
-### Anthem Metadata
-- Wikidata SPARQL - Most structured source
-- Wikipedia API - Supplementary data
+# Second download (idempotent)
+$ worldanthem data download
+✓ Inserted 0 countries, updated 177 countries, skipped 3
 
-### Audio Files
-- Wikimedia Commons - Primary source (OGG, MP3)
-- Internet Archive - Historical recordings
-- YouTube CC - Backup source
+# Verify count didn't change
+$ sqlite3 data.db "SELECT COUNT(*) FROM geojson_countries;"
+177
+```
 
-See `docs/research.md` for comprehensive analysis.
+## File Structure
 
-## Git Repository Status
-- ✅ .gitignore configured (Hugo, Go, Node, SQLite)
-- ✅ All source files committed
-- ✅ Documentation complete
-- ✅ Tests included
-- ✅ Build artifacts excluded
+```
+anthemworld/
+├── hugo/site/
+│   ├── static/
+│   │   ├── js/map.js                    # Map with GeoJSON loading
+│   │   └── data/countries.geojson       # 180 countries (251KB)
+│   └── hugo.toml
+├── cli/worldanthem/
+│   ├── cmd/
+│   │   ├── root.go
+│   │   ├── data.go                      # Data management commands
+│   │   └── jobs.go                      # Jobs commands
+│   ├── pkg/
+│   │   ├── db/db.go                     # Database initialization
+│   │   ├── jobs/
+│   │   │   ├── jobs.go                  # Job CRUD operations
+│   │   │   └── logger.go                # Job logging wrapper
+│   │   └── sources/
+│   │       ├── source.go                # DataSource interface
+│   │       ├── registry.go              # AllSources registry
+│   │       ├── geojson.go               # GeoJSON implementation
+│   │       └── geojson.schema.sql       # Schema definition (embedded)
+│   └── main.go
+├── tests/playwright/
+│   ├── tests/
+│   │   ├── map.features.spec.js         # Map feature tests
+│   │   ├── map.spec.js                  # Original map tests
+│   │   └── basic.spec.js                # Basic site tests
+│   └── playwright.config.js
+├── data/schema/
+│   ├── 001_init.sql                     # Initial schema
+│   └── 002_data_sources.sql             # Jobs enhancement
+├── docs/
+│   └── research.md                      # Data sources research
+├── IMPLEMENTATION_NOTES.md              # Technical documentation
+├── IMPLEMENTATION_SUMMARY.md            # This file
+├── README.md
+└── CONTRIBUTING.md
+```
 
-## Technologies Summary
+## Database Schema
 
-**Frontend:**
-- Hugo (static site generator)
-- Bootstrap 5 (CSS framework)
-- Leaflet.js + OpenStreetMap (mapping)
-- DataTables (table enhancement)
-- QRCode.js (QR generation)
+### Core Tables (schema v2)
+- `countries` - Basic country info
+- `anthems` - Anthem metadata (empty)
+- `audio_recordings` - Audio files (empty)
+- `jobs` - Job tracking
+- `data_sources` - Source registry
+- `job_logs` - Detailed job logs
+- `schema_version` - Migration tracking
 
-**Backend:**
-- Go 1.21+ (CLI application)
-- SQLite3 (database)
-- Cobra (CLI framework)
+### GeoJSON Source Tables
+- `geojson_countries` - Country boundaries with geometry
+- `geojson_metadata` - Source-specific metadata
 
-**Testing:**
-- Playwright (E2E tests)
-- Go testing package (unit tests)
+## Key Metrics
 
-**Infrastructure:**
-- npm (JavaScript dependencies)
-- Go modules (Go dependencies)
-- CDN delivery (Bootstrap, Leaflet, DataTables)
+- **Countries in database:** 177 (GeoJSON) + 62 (legacy) = 239 total
+- **GeoJSON file size:** 251KB (180 countries)
+- **Database size:** ~0.2 MB (geojson_countries table)
+- **Download time:** ~150ms (health check)
+- **Map load time:** <1 second
+- **Playwright tests:** 6/6 passing
+- **Go tests:** 2/2 passing
+- **Console errors:** 0
 
-## Performance Targets Met
-- ✅ Page loads under 2 seconds
-- ✅ No console errors
-- ✅ No failing XHR requests
-- ✅ Responsive on mobile
-- ✅ Accessibility considerations
+## Next Steps (Future)
 
-## Development Status
-🎉 **MVP Complete!**
+1. **Add REST Countries API Source**
+   - Fetch anthem names, dates, composers
+   - Store in `anthems` table
+   - Update map popups to show anthem info
 
-The foundation is solid and ready for data integration. All core systems are in place:
-- Website structure and navigation
-- Map and table interfaces
-- CLI framework and database
-- Test infrastructure
-- Comprehensive documentation
+2. **Add Wikidata SPARQL Source**
+   - Query for anthem metadata
+   - Link to audio files
+   - Store in `audio_recordings` table
 
-Next phase is data population and enhancement features.
+3. **Implement Data Export**
+   - `data format --output` exports database to JSON
+   - Generate `anthems.json`, `audio.json`, `countries-metadata.json`
+   - Frontend loads these instead of static files
 
-## Getting Help
-- Review CONTRIBUTING.md for development guide
-- Check TODO.md for planned features
-- See docs/research.md for data architecture
-- Run `worldanthem --help` for CLI commands
-- Open issues on GitHub for questions
+4. **Add Audio Player**
+   - Integrate audio widget in map popup
+   - Play anthem on country click
+   - Show composer, year, lyrics link
 
----
-Built: 2026-02-14
-Status: MVP Complete ✅
+5. **Implement Game Page**
+   - "Hot or Not" style anthem voting
+   - AWS Lambda + DynamoDB backend
+   - Leaderboard with vote counts
+
+## Documentation
+
+- `README.md` - Project overview and quick start
+- `CONTRIBUTING.md` - Developer guide with commands
+- `IMPLEMENTATION_NOTES.md` - Technical deep dives
+- `docs/research.md` - Data source research
+- `TODO.md` - Feature backlog
+
+## Success Criteria Met ✅
+
+- [x] Click anywhere in country → see country name
+- [x] 180 countries clickable (from GeoJSON)
+- [x] CLI downloads GeoJSON via `data download`
+- [x] Jobs tracked in database
+- [x] Status commands show health and progress
+- [x] Built extensibly (easy to add anthem data later)
+- [x] Zero console errors
+- [x] All tests passing
+- [x] Idempotent downloads
+- [x] Schema externalized to SQL file
+- [x] Tables visible in status output
+
+**Status: Production-ready for MVP!** 🎉

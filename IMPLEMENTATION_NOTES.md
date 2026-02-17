@@ -129,3 +129,140 @@ Tests cover:
 - **Metrics**: Track uptime percentage over time
 - **Parallel**: Check all sources concurrently (currently sequential)
 
+
+## Source-Specific Schema System
+
+### Overview
+Each data source defines its own database schema, independent of other sources. This allows sources to store optimized data structures without interfering with each other.
+
+### Architecture
+
+**DataSource Interface Extensions** (`pkg/sources/source.go`):
+```go
+type DataStats struct {
+    RecordCount   int
+    StorageBytes  int64
+    LastUpdated   string
+    SchemaVersion int
+}
+
+type DataSource interface {
+    // Schema management
+    GetSchema() string                          // SQL to create tables
+    GetSchemaVersion() int                      // Version number
+    ApplySchema(db) error                       // Apply schema
+    SchemaExists(db) (bool, error)              // Check if applied
+    
+    // Data management
+    GetDataStats(db) (DataStats, error)         // Statistics
+    NeedsUpdate(db) (bool, error)               // Freshness check
+}
+```
+
+**GeoJSON Schema** (`pkg/sources/geojson.go`):
+```sql
+CREATE TABLE geojson_countries (
+    iso_code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    feature_type TEXT NOT NULL,
+    geometry_type TEXT NOT NULL,          -- Polygon or MultiPolygon
+    geometry JSON NOT NULL,               -- Full GeoJSON geometry
+    bbox_min_lon REAL,                    -- Bounding box for queries
+    bbox_min_lat REAL,
+    bbox_max_lon REAL,
+    bbox_max_lat REAL,
+    coordinate_count INTEGER,             -- Complexity metric
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE geojson_metadata (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP
+);
+```
+
+### Features
+
+**1. Idempotent Downloads**
+- Uses SQLite's `INSERT ... ON CONFLICT ... DO UPDATE`
+- Same data downloaded twice → same record count
+- Timestamps update to track freshness
+
+**2. Data Statistics**
+- Record count: Number of countries stored
+- Storage size: Approximate bytes used
+- Last updated: Most recent update timestamp
+- Schema version: Track schema changes over time
+
+**3. Freshness Checking**
+- `NeedsUpdate()` returns true if:
+  - Schema doesn't exist
+  - Table is empty
+  - Data is older than 30 days
+- Prevents unnecessary re-downloads
+
+**4. Geometric Analysis**
+- Calculates bounding box (min/max lon/lat)
+- Counts coordinate pairs (polygon complexity)
+- Stores geometry type (Polygon vs MultiPolygon)
+- Enables spatial queries in future
+
+### Example Output
+
+```bash
+$ worldanthem data sources
+[1] GeoJSON Country Boundaries
+    Schema: ✓ Applied (v1)
+    Data: 177 records, ~0.2 MB, updated 2026-02-14 18:58:19
+    Health: ✓ Healthy (104ms)
+```
+
+### Sample Data
+
+```sql
+sqlite> SELECT iso_code, name, geometry_type, coordinate_count 
+        FROM geojson_countries 
+        WHERE iso_code IN ('USA', 'GBR', 'JPN');
+
+USA | United States of America | MultiPolygon | 443 coords
+GBR | United Kingdom           | MultiPolygon | 56 coords
+JPN | Japan                    | MultiPolygon | 65 coords
+```
+
+### Design Decisions
+
+**Why source-specific tables?**
+- Avoid conflicts between data sources
+- Each source can optimize for its data structure
+- Easy to add/remove sources without migrations
+- Clear ownership of data
+
+**Why store full geometry?**
+- Enables future spatial queries
+- Can generate custom GeoJSON exports
+- Can calculate distance/overlap in future
+- No loss of precision from source
+
+**Why track coordinate count?**
+- Measure polygon complexity
+- Identify simplified vs detailed geometries
+- Useful for performance optimization
+- Can choose appropriate zoom levels
+
+**Why 30-day freshness?**
+- Country boundaries change rarely
+- Balance between freshness and API load
+- Can be configured per source
+- User can force re-download anytime
+
+### Future Enhancements
+
+- **Schema migrations**: Version upgrades for existing tables
+- **Compression**: GZIP geometry JSON to save space
+- **Indexes**: Add spatial indexes when needed
+- **Partitioning**: Split large datasets by region
+- **Validation**: Check geometry validity on insert
+- **Deduplication**: Merge duplicate records from sources
+

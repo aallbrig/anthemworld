@@ -6,24 +6,24 @@
 
 #### United Nations Member States
 - **Source**: UN Official Website / UN API
-- **URL**: https://www.un.org/en/about-us/member-states
+- **URL**: https://www.un.org/en/about-us/member-states (403 - blocked/requires headers)
 - **Data Available**: 193 UN member states (matches our requirement)
 - **Format**: HTML/JSON (if API available)
 - **Health Check**: HTTP GET to endpoint, expect 200 status
-- **Notes**: Most authoritative source for internationally recognized countries
+- **Notes**: Most authoritative source for internationally recognized countries. **Note**: Returns 403, may require proper User-Agent header
 
 #### REST Countries API
 - **Source**: REST Countries (https://restcountries.com/)
-- **URL**: https://restcountries.com/v3.1/all
+- **URL**: https://restcountries.com/v3.1/all (400 - requires proper headers or different endpoint)
 - **Data Available**: Comprehensive country data including names, codes, capitals, flags
 - **Format**: JSON
 - **Health Check**: GET /v3.1/all, expect 200 and valid JSON
 - **Rate Limits**: None documented (consider caching)
-- **Notes**: Open source, actively maintained, includes ISO codes
+- **Notes**: Open source, actively maintained, includes ISO codes. **Note**: May need Accept header or check v3.1 vs v2 endpoint
 
 #### World Countries JSON (GitHub)
 - **Source**: mluqmaan/world-countries-json
-- **URL**: https://github.com/mluqmaan/world-countries-json/blob/main/countries.json
+- **URL**: https://github.com/mluqmaan/world-countries-json/blob/main/countries.json (200 ✓)
 - **Data Available**: Comprehensive JSON with country names, capitals, currencies, languages, coordinates
 - **Format**: JSON (static file)
 - **Health Check**: GET raw.githubusercontent.com URL
@@ -32,14 +32,14 @@
 
 #### Countries States Cities Database
 - **Source**: dr5hn/countries-states-cities-database (GitHub)
-- **URL**: https://github.com/dr5hn/countries-states-cities-database
+- **URL**: https://github.com/dr5hn/countries-states-cities-database (200 ✓)
 - **Data Available**: Countries with states/cities, includes coordinates, flags
 - **Format**: JSON, SQL, XML, YAML, CSV
 - **Notes**: Very comprehensive, includes sub-national data
 
 #### World Bank Country API
 - **Source**: World Bank Data API
-- **URL**: https://api.worldbank.org/v2/country?format=json
+- **URL**: https://api.worldbank.org/v2/country?format=json (200 ✓)
 - **Data Available**: Country codes, names, regions
 - **Format**: JSON/XML
 - **Health Check**: GET with format=json, expect 200
@@ -49,7 +49,7 @@
 
 #### Wikipedia API (MediaWiki)
 - **Source**: Wikipedia REST API / Action API
-- **URL**: https://en.wikipedia.org/api/rest_v1/
+- **URL**: https://en.wikipedia.org/api/rest_v1/ (200 ✓)
 - **Data Available**: 
   - National anthem names (from infobox data)
   - Anthem adoption dates
@@ -66,7 +66,7 @@
 
 #### Wikidata Query Service (SPARQL)
 - **Source**: Wikidata SPARQL endpoint
-- **URL**: https://query.wikidata.org/sparql
+- **URL**: https://query.wikidata.org/sparql (200 ✓)
 - **Data Available**:
   - National anthem (P85)
   - Inception/founding date (P571)
@@ -91,7 +91,7 @@
 
 #### johan/world.geo.json ⭐ RECOMMENDED FOR MVP
 - **Source**: GitHub repo by @johan
-- **URL**: https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json
+- **URL**: https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json (200 ✓)
 - **Data Available**: Country boundaries with simple clean structure
 - **Format**: GeoJSON
 - **Size**: 251KB (fast loading)
@@ -100,11 +100,11 @@
   - `id`: ISO 3-letter code (e.g. "USA", "GBR")
   - `name`: Country name (e.g. "United States of America")
 - **Health Check**: HTTP GET, expect 200 and Content-Type: text/plain
-- **Notes**: Simple, clean, perfect for MVP. Easy to parse.
+- **Notes**: Simple, clean, perfect for MVP. Easy to parse. ✅ Currently in use
 
 #### Natural Earth Data (Alternative - More Detailed)
 - **Source**: Natural Earth (via nvkelso/natural-earth-vector GitHub)
-- **URL**: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson
+- **URL**: https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson (200 ✓)
 - **Data Available**: High-quality country boundaries with extensive metadata
 - **Format**: GeoJSON
 - **Size**: 820KB (110m resolution - lowest detail, still good for world view)
@@ -130,7 +130,7 @@
 
 #### GeoJSON Country Boundaries (GitHub) ⭐ EASY TO USE
 - **Source**: datasets/geo-countries (GitHub)
-- **URL**: https://github.com/datasets/geo-countries
+- **URL**: https://github.com/datasets/geo-countries (200 ✓)
 - **Data Available**: Country boundaries in GeoJSON format
 - **Format**: GeoJSON (ready to use with Leaflet)
 - **File**: `data/countries.geojson` (direct download)
@@ -143,7 +143,7 @@
 
 #### World Atlas TopoJSON
 - **Source**: topojson/world-atlas (GitHub)  
-- **URL**: https://github.com/topojson/world-atlas
+- **URL**: https://github.com/topojson/world-atlas (200 ✓)
 - **Data Available**: Country boundaries in TopoJSON (more compact than GeoJSON)
 - **Format**: TopoJSON
 - **File Sizes**: 
@@ -190,32 +190,18 @@ fetch('/data/countries.geojson')
   });
 ```
 - **Source**: Natural Earth (naturalearthdata.com)
-- **URL**: https://www.naturalearthdata.com/downloads/
+- **URL**: https://www.naturalearthdata.com/downloads/ (200 ✓)
 - **Data Available**: High-quality country boundaries in multiple resolutions
 - **Format**: Shapefile, GeoJSON
 - **Resolutions**: 1:10m, 1:50m, 1:110m
 - **Health Check**: HTTP GET to download endpoint
 - **Notes**: Public domain, cartographically accurate, used by professional GIS
 
-#### GeoJSON Country Boundaries (GitHub)
-- **Source**: datasets/geo-countries (GitHub)
-- **URL**: https://github.com/datasets/geo-countries
-- **Data Available**: Country boundaries in GeoJSON format
-- **Format**: GeoJSON
-- **Notes**: Pre-processed, ready to use with Leaflet
-
-#### World Atlas TopoJSON
-- **Source**: topojson/world-atlas (GitHub)  
-- **URL**: https://github.com/topojson/world-atlas
-- **Data Available**: Country boundaries in TopoJSON (more compact than GeoJSON)
-- **Format**: TopoJSON
-- **Notes**: Smaller file sizes, can be converted to GeoJSON
-
 ## National Anthem Audio Sources
 
 #### Wikimedia Commons
 - **Source**: Wikimedia Commons
-- **URL**: https://commons.wikimedia.org/
+- **URL**: https://commons.wikimedia.org/ (200 ✓)
 - **Data Available**: Audio recordings of national anthems
 - **Format**: OGG, MP3, WAV files
 - **API**: MediaWiki API for file metadata and URLs
@@ -240,7 +226,7 @@ fetch('/data/countries.geojson')
 
 #### Internet Archive
 - **Source**: archive.org
-- **URL**: https://archive.org/
+- **URL**: https://archive.org/ (200 ✓)
 - **API**: Archive.org API
 - **Data Available**: Historical anthem recordings
 - **Format**: Various audio formats
