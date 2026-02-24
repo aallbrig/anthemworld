@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/anthemworld/cli/pkg/db"
+	"github.com/anthemworld/cli/pkg/format"
 	"github.com/anthemworld/cli/pkg/jobs"
 	"github.com/anthemworld/cli/pkg/sources"
 	"github.com/spf13/cobra"
@@ -208,7 +209,7 @@ var dataFormatCmd = &cobra.Command{
 	Short: "Format and export data to JSON",
 	Long:  `Export database data to JSON files for use by the website.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		format, _ := cmd.Flags().GetString("format")
+		outputFormat, _ := cmd.Flags().GetString("format")
 		output, _ := cmd.Flags().GetString("output")
 		
 		// Create output directory if it doesn't exist (mkdir -p behavior)
@@ -221,7 +222,7 @@ var dataFormatCmd = &cobra.Command{
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 		
-		fmt.Printf("Data Format: %s\n", format)
+		fmt.Printf("Data Format: %s\n", outputFormat)
 		fmt.Printf("Output Directory: %s\n", absOutput)
 		
 		// Check if directory is writable
@@ -231,14 +232,17 @@ var dataFormatCmd = &cobra.Command{
 		}
 		os.Remove(testFile)
 		
-		fmt.Println("\nTODO: Implement data formatting")
-		fmt.Println("This command will generate:")
-		fmt.Println("  - index.json (metadata and file references)")
-		fmt.Println("  - countries.json (country data)")
-		fmt.Println("  - anthems.json (anthem metadata)")
-		fmt.Println("  - audio.json (audio file references)")
-		fmt.Println("  - geography.json (GeoJSON country boundaries)")
+		database, err := db.GetDB()
+		if err != nil {
+			return fmt.Errorf("failed to open database: %w", err)
+		}
+		defer database.Close()
 		
+		fmt.Println("\nExporting data to JSON...")
+		if err := format.ExportToDir(database, absOutput); err != nil {
+			return fmt.Errorf("export failed: %w", err)
+		}
+		fmt.Println("\n✓ Export complete")
 		return nil
 	},
 }
