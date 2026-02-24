@@ -1,86 +1,37 @@
 // Interactive World Map with Leaflet
 let map;
 let countriesLayer;
+let anthemData = {}; // Loaded from /data/anthems.json
 
-// Sample countries data (to be replaced with actual data)
-const sampleCountries = [
-    {
-        name: "United States",
-        anthem: "The Star-Spangled Banner",
-        anthemDate: "1931",
-        founded: "1776",
-        coords: [37.0902, -95.7129]
-    },
-    {
-        name: "United Kingdom",
-        anthem: "God Save the King",
-        anthemDate: "Unknown",
-        founded: "1707",
-        coords: [55.3781, -3.4360]
-    },
-    {
-        name: "France",
-        anthem: "La Marseillaise",
-        anthemDate: "1795",
-        founded: "1792",
-        coords: [46.2276, 2.2137]
-    },
-    {
-        name: "Germany",
-        anthem: "Deutschlandlied",
-        anthemDate: "1922",
-        founded: "1871",
-        coords: [51.1657, 10.4515]
-    },
-    {
-        name: "Japan",
-        anthem: "Kimigayo",
-        anthemDate: "1888",
-        founded: "660 BCE",
-        coords: [36.2048, 138.2529]
+// Load anthem data from generated JSON file
+async function loadAnthemData() {
+    try {
+        const resp = await fetch('/data/anthems.json');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        // Index by ISO alpha-3 (both upper and lower case keys for flexibility)
+        for (const [key, country] of Object.entries(data)) {
+            anthemData[key.toUpperCase()] = country;
+            anthemData[key.toLowerCase()] = country;
+        }
+        console.log('✓ Loaded anthem data for', Object.keys(data).length, 'countries');
+    } catch (e) {
+        console.warn('Could not load anthem data:', e);
     }
-];
+}
 
 function initMap() {
     // Initialize map centered on the world
     map = L.map('map').setView([20, 0], 2);
-    
-    // Add OpenStreetMap tiles
-    // TODO: Customize tile layer to show only country names
-    // Options to explore:
-    // 1. Use MapBox with custom style (requires API key)
-    // 2. Use Stamen.TonerLite (minimalist, country-focused)
-    // 3. Use Thunderforest.Transport with customization
-    // 4. Self-host tiles with custom rendering
-    // 5. Use OpenStreetMap with CSS filters to reduce detail
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 18,
         minZoom: 2
     }).addTo(map);
-    
-    // TODO: Load GeoJSON country boundaries for clickable countries
-    // Recommended sources (see docs/research.md):
-    // 1. datasets/geo-countries (easiest) - ready-to-use GeoJSON
-    // 2. Natural Earth Data (best quality) - high-quality boundaries
-    // 3. topojson/world-atlas (best performance) - compact TopoJSON
-    //
-    // Implementation:
-    // fetch('/data/countries.geojson')
-    //   .then(response => response.json())
-    //   .then(data => {
-    //     L.geoJSON(data, {
-    //       style: styleCountry,
-    //       onEachFeature: onEachCountry
-    //     }).addTo(map);
-    //   });
-    
-    // Load country boundaries
-    loadCountryBoundaries();
-    
-    // Sample markers disabled - using GeoJSON instead
-    // Uncomment below if GeoJSON fails to load
-    // addSampleMarkers();
+
+    // Load anthem data, then boundaries
+    loadAnthemData().then(() => loadCountryBoundaries());
 }
 
 function loadCountryBoundaries() {
@@ -96,13 +47,11 @@ function loadCountryBoundaries() {
                 style: styleCountry,
                 onEachFeature: onEachCountry
             }).addTo(map);
-            
+
             console.log('✓ Loaded', data.features.length, 'countries');
         })
         .catch(error => {
             console.error('Error loading country boundaries:', error);
-            console.log('Falling back to sample markers');
-            addSampleMarkers();
         });
 }
 
@@ -119,13 +68,11 @@ function styleCountry(feature) {
 function onEachCountry(feature, layer) {
     const props = feature.properties;
     const countryName = props.name || props.ADMIN || props.NAME || 'Unknown';
-    
-    // Click handler
+
     layer.on('click', function(e) {
         onCountryClick(e);
     });
-    
-    // Hover highlight
+
     layer.on('mouseover', function(e) {
         const layer = e.target;
         layer.setStyle({
@@ -133,12 +80,11 @@ function onEachCountry(feature, layer) {
             weight: 2
         });
     });
-    
+
     layer.on('mouseout', function(e) {
         countriesLayer.resetStyle(e.target);
     });
-    
-    // Tooltip on hover
+
     layer.bindTooltip(countryName, {
         permanent: false,
         direction: 'top',
@@ -146,47 +92,82 @@ function onEachCountry(feature, layer) {
     });
 }
 
+function buildPopupContent(countryName, isoCode, countryRecord) {
+    if (!countryRecord) {
+        return `
+            <div class="country-popup">
+                <h4>${countryName}</h4>
+                ${isoCode ? `<p class="text-muted small mb-0">ISO: ${isoCode}</p>` : ''}
+            </div>`;
+    }
+
+    const anthem = countryRecord.anthem;
+    const audio = countryRecord.audio_files || [];
+    const flagURL = countryRecord.flag_url;
+
+    let flagHTML = '';
+    if (flagURL) {
+        flagHTML = `<img src="${flagURL}" alt="${countryName} flag" style="height:24px;vertical-align:middle;margin-right:6px;" onerror="this.style.display='none'">`;
+    }
+
+    let anthemSection = '';
+    if (anthem) {
+        const titleLine = anthem.title_en
+            ? `${anthem.name} <span class="text-muted small">(${anthem.title_en})</span>`
+            : anthem.name;
+        const composerLine = anthem.composer
+            ? `<div class="small text-muted">Music: ${anthem.composer}</div>` : '';
+        const lyricistLine = anthem.lyricist && anthem.lyricist !== anthem.composer
+            ? `<div class="small text-muted">Lyrics: ${anthem.lyricist}</div>` : '';
+        const dateLine = anthem.adopted_date
+            ? `<div class="small text-muted">Adopted: ${anthem.adopted_date.substring(0, 4)}</div>` : '';
+        const historySnippet = anthem.history
+            ? `<p class="small mt-1 mb-0" style="max-height:80px;overflow:hidden;text-overflow:ellipsis;">${anthem.history.substring(0, 200)}${anthem.history.length > 200 ? '…' : ''}</p>`
+            : '';
+
+        let audioPlayerHTML = '';
+        const instrumental = audio.find(a => a.type === 'instrumental') || audio[0];
+        if (instrumental && instrumental.url) {
+            audioPlayerHTML = `
+                <div class="mt-2">
+                    <audio controls style="width:100%;height:32px;" preload="none">
+                        <source src="${instrumental.url}" type="audio/${instrumental.format || 'ogg'}">
+                    </audio>
+                </div>`;
+        }
+
+        anthemSection = `
+            <hr class="my-1">
+            <div class="fw-semibold">${titleLine}</div>
+            ${composerLine}${lyricistLine}${dateLine}
+            ${historySnippet}
+            ${audioPlayerHTML}`;
+    } else {
+        anthemSection = `<hr class="my-1"><p class="small text-muted mb-0"><em>No anthem data available yet.</em></p>`;
+    }
+
+    const capital = countryRecord.capital
+        ? `<div class="small text-muted">Capital: ${countryRecord.capital}</div>` : '';
+
+    return `
+        <div class="country-popup" style="min-width:220px;max-width:300px;">
+            <h5 class="mb-1">${flagHTML}${countryRecord.name || countryName}</h5>
+            ${capital}
+            ${anthemSection}
+        </div>`;
+}
+
 function onCountryClick(e) {
     const layer = e.target;
     const props = layer.feature.properties;
-    
-    // Try multiple property names (different GeoJSON sources use different names)
-    const countryName = props.name || props.ADMIN || props.NAME || 'Unknown Country';
-    const isoCode = props.iso_a3 || props.ISO_A3 || props.id || '';
-    
-    // Simple popup for MVP - just country name
-    const popupContent = `
-        <div class="country-popup">
-            <h4>${countryName}</h4>
-            ${isoCode ? `<p class="text-muted small">ISO Code: ${isoCode}</p>` : ''}
-            <hr class="my-2">
-            <p class="text-muted small mb-0">
-                <em>Anthem data coming soon!</em><br>
-                Run <code>worldanthem data download</code> to populate
-            </p>
-        </div>
-    `;
-    
-    layer.bindPopup(popupContent).openPopup();
-}
 
-function addSampleMarkers() {
-    // Add sample markers for demonstration purposes
-    sampleCountries.forEach(country => {
-        const marker = L.marker(country.coords).addTo(map);
-        
-        const popupContent = `
-            <div>
-                <h4>${country.name}</h4>
-                <p><strong>National Anthem:</strong> ${country.anthem}</p>
-                <p><strong>Adopted:</strong> ${country.anthemDate}</p>
-                <p><strong>Founded:</strong> ${country.founded}</p>
-                <p class="text-muted small"><em>TODO: Add audio player widget here</em></p>
-            </div>
-        `;
-        
-        marker.bindPopup(popupContent);
-    });
+    const countryName = props.name || props.ADMIN || props.NAME || 'Unknown Country';
+    const isoCode = (props.iso_a3 || props.ISO_A3 || props.id || '').toUpperCase();
+
+    const countryRecord = anthemData[isoCode] || null;
+    const popupContent = buildPopupContent(countryName, isoCode, countryRecord);
+
+    layer.bindPopup(popupContent, { maxWidth: 320 }).openPopup();
 }
 
 // Initialize map when DOM is ready
@@ -195,3 +176,4 @@ document.addEventListener('DOMContentLoaded', function() {
         initMap();
     }
 });
+

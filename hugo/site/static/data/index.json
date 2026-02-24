@@ -1,0 +1,11 @@
+{
+  "generated_at": "2026-02-24T01:14:39Z",
+  "total_countries": 239,
+  "total_anthems": 192,
+  "total_audio": 370,
+  "with_history": 170,
+  "files": [
+    "anthems.json",
+    "index.json"
+  ]
+}
