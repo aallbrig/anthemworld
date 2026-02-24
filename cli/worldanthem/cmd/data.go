@@ -248,9 +248,9 @@ var dataFormatCmd = &cobra.Command{
 }
 
 var dataDownloadCmd = &cobra.Command{
-	Use:   "download",
+	Use:   "download [source-id...]",
 	Short: "Download data from sources",
-	Long:  `Download data from all or specified data sources.`,
+	Long:  `Download data from all or specified data sources. Pass source IDs to download only those sources (e.g. "worldanthem data download wikimedia-commons factbook-json").`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		database, err := db.GetDB()
 		if err != nil {
@@ -260,9 +260,34 @@ var dataDownloadCmd = &cobra.Command{
 
 		fmt.Println("=== Data Download ===\n")
 
+		// Filter sources by args if provided
+		allSources := sources.AllSources
+		if len(args) > 0 {
+			// Build lookup set from args
+			requested := make(map[string]bool, len(args))
+			for _, a := range args {
+				requested[a] = true
+			}
+			var filtered []sources.DataSource
+			for _, s := range allSources {
+				if requested[s.ID()] {
+					filtered = append(filtered, s)
+				}
+			}
+			if len(filtered) == 0 {
+				// List available IDs to help the user
+				fmt.Println("No matching sources found. Available source IDs:")
+				for _, s := range allSources {
+					fmt.Printf("  %s\n", s.ID())
+				}
+				return fmt.Errorf("no sources matched: %v", args)
+			}
+			allSources = filtered
+		}
+
 		// Create job
 		jobID, err := jobs.CreateJob(database, "data-download", map[string]interface{}{
-			"sources": "all",
+			"sources": strings.Join(args, ","),
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create job: %w", err)
@@ -278,9 +303,8 @@ var dataDownloadCmd = &cobra.Command{
 			return fmt.Errorf("failed to start job: %w", err)
 		}
 
-		// Download from all sources
+		// Download from selected sources
 		ctx := context.Background()
-		allSources := sources.AllSources
 		successCount := 0
 		failCount := 0
 
@@ -288,7 +312,6 @@ var dataDownloadCmd = &cobra.Command{
 			fmt.Printf("[%d/%d] %s\n", i+1, len(allSources), source.Name())
 			logger.Infof("Starting download from %s", source.Name())
 
-			// Download from source
 			if err := source.Download(ctx, database, logger); err != nil {
 				logger.Errorf("Failed to download from %s: %v", source.Name(), err.Error())
 				fmt.Printf("    ✗ Failed: %v\n\n", err)
@@ -303,20 +326,16 @@ var dataDownloadCmd = &cobra.Command{
 
 		// Complete or fail job based on results
 		if failCount > 0 && successCount == 0 {
-			// All sources failed
 			errMsg := fmt.Sprintf("All %d sources failed", failCount)
 			jobs.FailJob(database, jobID, errMsg)
 			logger.Error(errMsg)
-			return fmt.Errorf(errMsg)
+			return fmt.Errorf("%s", errMsg)
 		} else if failCount > 0 {
-			// Partial success
 			logger.Warnf("Download completed with %d successes and %d failures", successCount, failCount)
 		} else {
-			// All succeeded
 			logger.Infof("All %d sources downloaded successfully", successCount)
 		}
 
-		// Complete job
 		if err := jobs.CompleteJob(database, jobID); err != nil {
 			return fmt.Errorf("failed to complete job: %w", err)
 		}
