@@ -1,0 +1,216 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Anthem World Game Service — ELO anthem ranking game
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 10
+    MemorySize: 256
+    Environment:
+      Variables:
+        RANKINGS_TABLE:  !Ref RankingsTable
+        VOTES_TABLE:     !Ref VotesTable
+        SESSIONS_TABLE:  !Ref SessionsTable
+        LISTEN_TABLE:    !Ref ListenHistoryTable
+        MIN_LISTEN_MS:   "3000"
+        MAX_VOTES_PER_SESSION: "100"
+        MAX_SESSIONS_PER_IP:   "5"
+        CORS_ORIGIN:     "*"
+
+Parameters:
+  Stage:
+    Type: String
+    Default: local
+    AllowedValues: [local, dev, prod]
+
+Resources:
+
+  # ── API Gateway ────────────────────────────────────────────────────────────
+  GameApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Stage
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Session-Id'"
+        AllowOrigin: "'*'"
+
+  # ── Lambda Functions ────────────────────────────────────────────────────────
+  SessionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: session/index.handler
+      Description: Create or validate an anonymous game session
+      Events:
+        CreateSession:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameApi
+            Path: /session
+            Method: POST
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SessionsTable
+
+  MatchupFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: matchup/index.handler
+      Description: Return the next ELO-matched anthem pair for a session
+      Events:
+        GetMatchup:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameApi
+            Path: /matchup
+            Method: GET
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref SessionsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref RankingsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref ListenHistoryTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SessionsTable
+
+  VoteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: vote/index.handler
+      Description: Submit a vote, validate listen requirements, update ELO
+      Events:
+        SubmitVote:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameApi
+            Path: /vote
+            Method: POST
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VotesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RankingsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SessionsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ListenHistoryTable
+
+  LeaderboardFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: leaderboard/index.handler
+      Description: Return paginated ELO leaderboard
+      Events:
+        GetLeaderboard:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameApi
+            Path: /leaderboard
+            Method: GET
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref RankingsTable
+
+  # ── DynamoDB Tables ─────────────────────────────────────────────────────────
+  RankingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "anthem-rankings-${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: country_id
+          AttributeType: S
+        - AttributeName: elo_score
+          AttributeType: N
+      KeySchema:
+        - AttributeName: country_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: elo-index
+          KeySchema:
+            - AttributeName: elo_score
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+
+  VotesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "anthem-votes-${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: vote_id
+          AttributeType: S
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: voted_at
+          AttributeType: S
+      KeySchema:
+        - AttributeName: vote_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: session-votes-index
+          KeySchema:
+            - AttributeName: session_id
+              KeyType: HASH
+            - AttributeName: voted_at
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  SessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "anthem-sessions-${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: ip_hash
+          AttributeType: S
+        - AttributeName: created_date
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: ip-sessions-index
+          KeySchema:
+            - AttributeName: ip_hash
+              KeyType: HASH
+            - AttributeName: created_date
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  ListenHistoryTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "anthem-listen-history-${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk   # session_id#country_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+Outputs:
+  GameApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${GameApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+  LocalApiUrl:
+    Description: Local SAM/LocalStack URL
+    Value: "http://localhost:3001"
