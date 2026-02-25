@@ -20,4 +20,9 @@ func Execute() error {
 
 func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
+
+	// Set version — Cobra automatically adds --version / -v flag.
+	// We use a custom template so {{.Version}} prints our pre-formatted string.
+	rootCmd.Version = buildVersionString()
+	rootCmd.SetVersionTemplate("{{.Version}}\n")
 }
