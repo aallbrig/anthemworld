@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  localstack:
+    image: localstack/localstack:3
+    container_name: anthemworld-localstack
+    ports:
+      - "4566:4566"        # LocalStack gateway (DynamoDB, S3, etc.)
+    environment:
+      - SERVICES=dynamodb
+      - DEFAULT_REGION=us-east-1
+      - DEBUG=0
+      - PERSISTENCE=1      # persist state across restarts
+      - LOCALSTACK_DATA_DIR=/var/lib/localstack/data
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  localstack_data:
