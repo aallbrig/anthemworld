@@ -155,14 +155,16 @@ exports.handler = async (event) => {
             db.send(new UpdateCommand({
                 TableName: LISTEN_TABLE,
                 Key: { pk: `${session_id}#${winner_id}` },
-                UpdateExpression: 'SET total_listen_ms = if_not_exists(total_listen_ms, :z) + :ms, ttl = :ttl',
+                UpdateExpression: 'SET total_listen_ms = if_not_exists(total_listen_ms, :z) + :ms, #ttl = :ttl',
+                ExpressionAttributeNames: { '#ttl': 'ttl' },
                 ExpressionAttributeValues: { ':z': 0, ':ms': listenWinner, ':ttl': listenTtl },
             })),
             // Update listen history for loser
             db.send(new UpdateCommand({
                 TableName: LISTEN_TABLE,
                 Key: { pk: `${session_id}#${loser_id}` },
-                UpdateExpression: 'SET total_listen_ms = if_not_exists(total_listen_ms, :z) + :ms, ttl = :ttl',
+                UpdateExpression: 'SET total_listen_ms = if_not_exists(total_listen_ms, :z) + :ms, #ttl = :ttl',
+                ExpressionAttributeNames: { '#ttl': 'ttl' },
                 ExpressionAttributeValues: { ':z': 0, ':ms': listenLoser, ':ttl': listenTtl },
             })),
         ]);
