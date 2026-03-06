@@ -17,6 +17,7 @@ Globals:
         MAX_VOTES_PER_SESSION: "100"
         MAX_SESSIONS_PER_IP:   "5"
         CORS_ORIGIN:     "*"
+        LOCAL_DYNAMODB_ENDPOINT: ""
 
 Parameters:
   Stage:

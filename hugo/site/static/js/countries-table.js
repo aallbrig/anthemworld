@@ -8,9 +8,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initCountriesTable() {
     fetch('/data/anthems.json')
-        .then(r => r.ok ? r.json() : Promise.reject('not found'))
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
         .then(data => renderTable(data))
-        .catch(() => renderTable(null));
+        .catch(err => {
+            console.warn('[countries-table] Failed to load anthem data:', err);
+            renderTable(null);
+        });
 }
 
 function renderTable(data) {
@@ -89,7 +92,13 @@ function renderTable(data) {
             zeroRecords: noDataMsg,
         },
         responsive: true,
-        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip'
+        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
+        drawCallback: function () {
+            // Register newly drawn audio elements with global controller
+            if (window.AudioController) {
+                AudioController.registerAll(document.getElementById('countries-table'));
+            }
+        },
     });
 
     if (!data || rows.length === 0) {

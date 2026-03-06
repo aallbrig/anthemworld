@@ -1,0 +1,112 @@
+{{ define "title" }}Anthem Battle — {{ .Site.Title }}{{ end }}
+
+{{ define "main" }}
+<div class="container-fluid py-4" id="game-app">
+
+  <!-- Header -->
+  <div class="text-center mb-4">
+    <h1 class="display-5">🎵 Anthem Battle</h1>
+    <p class="lead text-muted">Listen to two national anthems and vote for your favourite.</p>
+    <div id="session-status" class="text-muted small">Starting session…</div>
+  </div>
+
+  <!-- Score bar -->
+  <div id="score-bar" class="d-none text-center mb-3">
+    <span class="badge bg-secondary me-2">Votes: <span id="vote-count">0</span></span>
+    <a href="/game/leaderboard/" class="btn btn-sm btn-outline-primary">🏆 Leaderboard</a>
+  </div>
+
+  <!-- Loading spinner -->
+  <div id="game-loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading…</span>
+    </div>
+    <p class="mt-2 text-muted">Fetching matchup…</p>
+  </div>
+
+  <!-- Error panel -->
+  <div id="game-error" class="d-none alert alert-danger mx-auto" style="max-width:600px" role="alert">
+    <strong id="game-error-title">Error</strong>
+    <p id="game-error-msg" class="mb-0"></p>
+    <button class="btn btn-sm btn-outline-danger mt-2" id="game-retry-btn">Try again</button>
+  </div>
+
+  <!-- Matchup -->
+  <div id="game-matchup" class="d-none row g-4 justify-content-center">
+
+    <!-- Country A -->
+    <div class="col-md-5">
+      <div class="card h-100 shadow-sm" id="card-a">
+        <div class="card-body text-center">
+          <img id="flag-a" src="" alt="Flag" class="mb-2" style="height:60px; object-fit:contain;">
+          <h4 id="name-a" class="card-title"></h4>
+          <p id="anthem-a" class="text-muted small mb-2"></p>
+          <audio id="audio-a" controls class="w-100 mb-2" preload="none"></audio>
+          <div id="listen-indicator-a" class="text-muted small mb-2 d-none">
+            ⏱ <span id="listen-timer-a">0</span>s heard
+          </div>
+          <div class="mt-2">
+            <span class="badge bg-light text-dark border">ELO: <span id="elo-a">—</span></span>
+          </div>
+        </div>
+        <div class="card-footer text-center">
+          <button class="btn btn-success btn-lg w-100" id="vote-a-btn" disabled>
+            👍 Vote for this anthem
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VS divider -->
+    <div class="col-md-1 d-flex align-items-center justify-content-center">
+      <div class="text-center">
+        <div class="display-6 text-muted fw-bold">VS</div>
+        <div id="wildcard-badge" class="badge bg-warning text-dark d-none mt-1">🎲 Wildcard</div>
+      </div>
+    </div>
+
+    <!-- Country B -->
+    <div class="col-md-5">
+      <div class="card h-100 shadow-sm" id="card-b">
+        <div class="card-body text-center">
+          <img id="flag-b" src="" alt="Flag" class="mb-2" style="height:60px; object-fit:contain;">
+          <h4 id="name-b" class="card-title"></h4>
+          <p id="anthem-b" class="text-muted small mb-2"></p>
+          <audio id="audio-b" controls class="w-100 mb-2" preload="none"></audio>
+          <div id="listen-indicator-b" class="text-muted small mb-2 d-none">
+            ⏱ <span id="listen-timer-b">0</span>s heard
+          </div>
+          <div class="mt-2">
+            <span class="badge bg-light text-dark border">ELO: <span id="elo-b">—</span></span>
+          </div>
+        </div>
+        <div class="card-footer text-center">
+          <button class="btn btn-success btn-lg w-100" id="vote-b-btn" disabled>
+            👍 Vote for this anthem
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /matchup -->
+
+  <!-- Vote result flash -->
+  <div id="vote-result" class="d-none text-center mt-4">
+    <div id="vote-result-content" class="alert alert-info mx-auto" style="max-width:500px"></div>
+  </div>
+
+  <!-- Skip button -->
+  <div id="skip-area" class="d-none text-center mt-3">
+    <button class="btn btn-outline-secondary btn-sm" id="skip-btn">⏭ Skip this matchup</button>
+  </div>
+
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+  // Game API base URL — override via window.GAME_API_URL for local dev
+  window.GAME_API_URL = window.GAME_API_URL || '';
+</script>
+<script src="/js/game.js"></script>
+{{ end }}

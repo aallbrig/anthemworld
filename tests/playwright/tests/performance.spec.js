@@ -32,7 +32,8 @@ test.describe('Performance Tests', () => {
     const failedResources = [];
 
     page.on('response', response => {
-      if (!response.ok() && response.status() !== 304) {
+      // Ignore WebSocket upgrades (livereload in dev, status 101) and redirects (304)
+      if (!response.ok() && response.status() !== 304 && response.status() !== 101) {
         failedResources.push({
           url: response.url(),
           status: response.status()

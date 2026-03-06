@@ -1,85 +1,106 @@
 # TODO List
 
-## Project Status: ~40% Complete
-MVP foundations are solid. Data collection system works. Frontend needs integration. Game feature is next major milestone.
+## Project Status: ~60% Complete
+Data collection complete. Frontend integrated with live data. Game feature is the next major milestone.
 
 ---
 
 ## ✅ Completed
 
-### Phase 1: Core Infrastructure (100% Complete)
-- [x] Create initial project structure with Hugo, Go CLI, Playwright tests
-- [x] Set up Hugo site with Bootstrap 5, navigation, footer
-- [x] Integrate Leaflet map with OpenStreetMap tiles
-- [x] Add map click handlers and popup widget
-- [x] Create countries table page with DataTables (search/filter)
-- [x] Set up Go CLI with SQLite database (OS-specific paths)
-- [x] Create database schema in data/schema/
-- [x] Implement CLI commands: status, data status, data sources, jobs status
-- [x] Write comprehensive documentation (README, CONTRIBUTING, research.md, game.md)
-- [x] Add QR code widget implementation
-- [x] Configure Playwright tests (console errors, load time, XHR, map interaction)
+### Phase 1: Core Infrastructure (100%)
+- [x] Hugo site with Bootstrap 5, navigation, footer
+- [x] Leaflet.js interactive map with clickable GeoJSON country polygons
+- [x] Countries table page with DataTables (search/filter/sort)
+- [x] Go CLI with SQLite database (OS-specific paths)
+- [x] Database schema with migrations
+- [x] QR code widget on all pages
+- [x] Playwright tests (console errors, load time, map interaction)
 
-### Phase 2: Data Collection System (95% Complete)
-- [x] Design DataSource interface and job system architecture
-- [x] Implement GeoJSON Country Boundaries source (177 countries downloaded)
-- [x] Implement REST Countries API source (192 UN members downloaded)
-- [x] Implement Wikidata SPARQL source (192 anthems with metadata downloaded)
-- [x] Implement Wikimedia Commons source (48+ audio recordings, search-based)
-- [x] Add health checks for all data sources
-- [x] Implement `data download` command with parallel job execution
-- [x] Implement `data sources` command with health monitoring
-- [x] Add rate limiting and error handling per source
-- [x] Database contains: 239 countries, 192 anthems, 48+ audio recordings
+### Phase 2: Data Collection (100%)
+- [x] DataSource interface and job tracking system
+- [x] GeoJSON Country Boundaries source (177 countries with geometry)
+- [x] REST Countries API source (192 UN members, names/capitals/regions)
+- [x] Wikidata SPARQL source (192 anthems: name, composer, lyricist, date)
+- [x] Wikimedia Commons source (565 audio recordings, resumable)
+- [x] CIA World Factbook source (233 countries: anthem history, symbols, colors, flags)
+- [x] `data download [source-id...]` — filter by source, resumable
+- [x] `data format --output` — exports anthems.json + index.json
+- [x] `data sources` health checks and schema management
+- [x] `--version` flag with git commit, build date, Go version
+- [x] `Makefile` with `make build` / `make install`
+- [x] Database: 239 countries, 192 anthems, 565 audio files, 170 with history
 
----
-
-## 🚧 In Progress
-
-### Phase 2: Data Collection (Final 5%)
-- [ ] **NEXT**: Run full Wikimedia Commons download (~15 mins, rate-limited)
-  - Currently: 48 recordings, Goal: 150-200+ recordings
-- [ ] **NEXT**: Implement `data format` command to export SQLite → JSON
-  - [ ] Create pkg/format package
-  - [ ] Generate anthems.json (anthem metadata by country ISO code)
-  - [ ] Generate audio.json (audio file URLs by recording ID)
-  - [ ] Generate countries-metadata.json (extended country info)
-  - [ ] Generate index.json (data manifest with stats)
-  - [ ] Add CLI flag: `--output hugo/site/static/data`
+### Phase 3: Frontend Integration (100%)
+- [x] Map popups load real anthem data from anthems.json
+- [x] Map popups show: flag, anthem name + English translation, composer, adopted year, history snippet, audio player
+- [x] Countries table loads live data (239 rows, not sample data)
+- [x] Countries table: flag, anthem name, English translation, composer, region, audio player
+- [x] Global audio controller — only one anthem plays at a time
+- [x] Graceful fallback when data files missing (with CLI instructions)
 
 ---
 
-## 📋 Upcoming
+## 🚧 Next: Phase 4 — Game Backend
 
-### Phase 3: Frontend Integration (0% Complete)
-**Goal**: Connect CLI data to Hugo site, make map fully functional
+**Goal**: Build "Hot or Not" anthem ranking game with SAM/Lambda/DynamoDB + LocalStack for local dev.
+**See `docs/game.md` for full specification.**
 
-#### Map Enhancement
-- [ ] Create `data-loader.js` to load all JSON files from CLI export
-- [ ] Merge GeoJSON boundaries with anthem metadata
-- [ ] Update map.js to use real country data instead of sample markers
-- [ ] Add HTML5 audio player widget to country popups
-- [ ] Display anthem metadata (name, composer, date, audio player)
-- [ ] Test popup with graceful fallback (before/after data load)
-- [ ] Add country highlighting on hover
-- [ ] Optimize tile loading for performance
+### Infrastructure Setup
+- [ ] Create `sam/` directory structure (`sam/game/`, `sam/leaderboard/`)
+- [ ] `template.yaml` — CloudFormation for Lambda + API Gateway + DynamoDB
+- [ ] LocalStack setup: `docker-compose.yml` + init scripts for local DynamoDB tables
+- [ ] `sam local start-api` verified working at `http://localhost:3001`
 
-#### Data Display
-- [ ] Update countries table to show anthem data
-- [ ] Add search by anthem name, composer
-- [ ] Add filter by region, has-audio, etc.
-- [ ] Add loading spinners during data fetch
-- [ ] Implement error handling for missing data
+### DynamoDB Tables
+- [ ] `anthem-rankings` — ELO scores (country_id, elo_score, wins, losses)
+- [ ] `vote-history` — votes with session, winner, loser, listen durations
+- [ ] `sessions` — anonymous sessions with IP country detection
+- [ ] `session-listen-history` — per-anthem cumulative listen time
 
-#### Testing
-- [ ] Update Playwright tests for new functionality
-- [ ] Test audio playback across browsers
-- [ ] Test on mobile devices
-- [ ] Visual regression tests for map changes
+### Lambda Functions
+- [ ] `POST /session` — create anonymous session, detect IP country
+- [ ] `GET /matchup` — ELO-based pair selection, return listen history
+- [ ] `POST /vote` — validate listen requirements, update ELO, return next matchup
+- [ ] `GET /leaderboard` — paginated ranked country list
 
-**Success Criteria**: Users can click any country → see anthem info → play audio
+### Rate Limiting & Validation
+- [ ] 5s minimum listen per new anthem (3s is acceptable per game.md)
+- [ ] 100 votes/session/day max
+- [ ] 5 sessions/IP/day max
+- [ ] One active matchup per session at a time
 
 ---
+
+## 📋 Phase 5: Game Frontend
+
+- [ ] `CountryHighlightMap` component (`js/country-map.js`) — `flyToCountry(iso)`, `highlightCountry()`
+- [ ] `/game` page with dual map widgets, dual audio players, vote buttons
+- [ ] Progress bars showing listen time (0 → 3s requirement)
+- [ ] Smart client-side logic: server listen history determines if voting is immediate
+- [ ] `/leaderboard` page — real-time ELO rankings with region filter
+- [ ] Wire to `http://localhost:3001/api` in dev, production URL in prod
+
+---
+
+## 📋 Phase 6: Polish & Production
+
+- [ ] Shell completions (bash, zsh, fish) via `worldanthem completion`
+- [ ] `data stats` command for detailed completeness report
+- [ ] Accessibility audit (ARIA labels, keyboard nav, WCAG AA)
+- [ ] Service worker for offline support
+- [ ] CI/CD pipeline (GitHub Actions)
+- [ ] Production deployment documentation
+
+---
+
+## Known Issues / Technical Debt
+
+- [ ] Some Wikidata composer/lyricist fields are raw QIDs (e.g. `Q342580`) — need label resolution pass
+- [ ] Wikimedia search sometimes returns false positives (wrong anthem for country)
+- [ ] GeoJSON only covers 177/193 UN countries — 16 missing boundaries
+- [ ] `cmd/data.go` has pre-existing vet warnings (redundant newlines, non-constant fmt.Errorf)
+- [ ] Firefox Playwright tests fail due to livereload WebSocket 101 status (pre-existing, not a real bug)
+
 
 ### Phase 4: Game Feature (0% Complete)
 **See docs/game.md for complete specification**

@@ -1,0 +1,127 @@
+{{ define "title" }}Anthem Leaderboard — {{ .Site.Title }}{{ end }}
+
+{{ define "main" }}
+<div class="container py-4">
+
+  <div class="text-center mb-4">
+    <h1 class="display-5">🏆 Anthem Leaderboard</h1>
+    <p class="lead text-muted">Countries ranked by anthem vote score (ELO rating system).</p>
+    <a href="/game/" class="btn btn-primary">🎵 Play Anthem Battle</a>
+  </div>
+
+  <!-- Loading state -->
+  <div id="leaderboard-loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading…</span>
+    </div>
+    <p class="mt-2 text-muted">Loading rankings…</p>
+  </div>
+
+  <!-- Error state -->
+  <div id="leaderboard-error" class="d-none alert alert-warning mx-auto" style="max-width:600px">
+    <strong>Rankings unavailable</strong>
+    <p class="mb-0 small">The game server is not running. Start it with <code>make game-dev</code> or check back later.</p>
+  </div>
+
+  <!-- Stats bar -->
+  <div id="leaderboard-stats" class="d-none text-center mb-3">
+    <span class="badge bg-secondary me-2">Total countries: <span id="total-countries">—</span></span>
+    <span class="badge bg-secondary">Generated: <span id="generated-at">—</span></span>
+  </div>
+
+  <!-- Region filter -->
+  <div id="leaderboard-controls" class="d-none mb-3 d-flex gap-2 flex-wrap justify-content-center">
+    <button class="btn btn-outline-primary btn-sm region-filter active" data-region="all">All</button>
+  </div>
+
+  <!-- Rankings table -->
+  <div id="leaderboard-table-wrap" class="d-none table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th class="text-center" style="width:50px">#</th>
+          <th>Country</th>
+          <th>Anthem</th>
+          <th class="text-center">ELO</th>
+          <th class="text-center">Wins</th>
+          <th class="text-center">Losses</th>
+          <th class="text-center">Win %</th>
+        </tr>
+      </thead>
+      <tbody id="leaderboard-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Empty state (no votes yet) -->
+  <div id="leaderboard-empty" class="d-none text-center py-5">
+    <p class="text-muted">No votes yet! <a href="/game/">Be the first to vote.</a></p>
+  </div>
+
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+window.GAME_API_URL = window.GAME_API_URL || '';
+
+(async function() {
+  const API = (window.GAME_API_URL || '').replace(/\/$/, '');
+  const loading = document.getElementById('leaderboard-loading');
+  const error   = document.getElementById('leaderboard-error');
+  const stats   = document.getElementById('leaderboard-stats');
+  const controls= document.getElementById('leaderboard-controls');
+  const tableWrap= document.getElementById('leaderboard-table-wrap');
+  const tbody   = document.getElementById('leaderboard-tbody');
+  const empty   = document.getElementById('leaderboard-empty');
+
+  function show(el) { el.classList.remove('d-none'); }
+  function hide(el) { el.classList.add('d-none'); }
+
+  function renderRow(c) {
+    const winRate = c.win_rate != null ? `${c.win_rate}%` : '—';
+    const medal = c.rank <= 3 ? ['🥇','🥈','🥉'][c.rank - 1] + ' ' : '';
+    const flag  = c.flag_url
+      ? `<img src="${c.flag_url}" alt="" style="height:24px;width:36px;object-fit:cover;border:1px solid #dee2e6" class="me-2">`
+      : '';
+    return `<tr>
+      <td class="text-center fw-bold">${medal}${c.rank}</td>
+      <td>${flag}<span class="fw-semibold">${escHtml(c.name)}</span></td>
+      <td class="text-muted small">${c.anthem_name ? escHtml(c.anthem_name) : '—'}</td>
+      <td class="text-center"><span class="badge bg-primary">${c.elo_score}</span></td>
+      <td class="text-center text-success">${c.wins}</td>
+      <td class="text-center text-danger">${c.losses}</td>
+      <td class="text-center">${winRate}</td>
+    </tr>`;
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  try {
+    const res = await fetch(`${API}/leaderboard?limit=200`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    hide(loading);
+
+    if (!data.countries || data.countries.length === 0) {
+      show(empty);
+      return;
+    }
+
+    document.getElementById('total-countries').textContent = data.total;
+    document.getElementById('generated-at').textContent = new Date(data.generated_at).toLocaleString();
+    show(stats);
+    show(controls);
+    show(tableWrap);
+
+    tbody.innerHTML = data.countries.map(renderRow).join('');
+  } catch (err) {
+    console.error('Leaderboard fetch failed:', err);
+    hide(loading);
+    show(error);
+  }
+})();
+</script>
+{{ end }}
