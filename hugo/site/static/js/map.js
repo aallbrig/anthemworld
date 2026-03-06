@@ -167,7 +167,13 @@ function onCountryClick(e) {
     const countryRecord = anthemData[isoCode] || null;
     const popupContent = buildPopupContent(countryName, isoCode, countryRecord);
 
-    layer.bindPopup(popupContent, { maxWidth: 320 }).openPopup();
+    const popup = layer.bindPopup(popupContent, { maxWidth: 320 }).openPopup();
+
+    // Register audio elements with global controller once popup DOM is ready
+    layer.on('popupopen', function () {
+        const el = layer.getPopup().getElement();
+        if (el && window.AudioController) window.AudioController.registerAll(el);
+    });
 }
 
 // Initialize map when DOM is ready

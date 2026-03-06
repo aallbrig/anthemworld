@@ -1,8 +1,13 @@
 # build cli @ root of repo
 worldanthem
+bin/
 # jetbrains ides ftw
 .idea
-404: Not Found# If you prefer the allow list template instead of the deny list, see community template:
+# hugo build output — never commit
+hugo/site/public/
+# local sam env overrides
+sam/game/env.local.json
+# If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
 # Binaries for programs and plugins

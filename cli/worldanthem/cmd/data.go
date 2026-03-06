@@ -24,7 +24,7 @@ var statusCmd = &cobra.Command{
 	Short: "Show overall status of the system",
 	Long:  `Display status information including data status and jobs status.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("=== World Anthem Status ===\n")
+		fmt.Println("=== World Anthem Status ===")
 		
 		// Call data status
 		if err := dataStatusCmd.RunE(cmd, args); err != nil {
@@ -111,7 +111,7 @@ var dataSourcesCmd = &cobra.Command{
 	Long:  `Check the health status of all configured data sources.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Data Sources Status")
-		fmt.Println("===================\n")
+		fmt.Println("===================")
 		
 		database, err := db.GetDB()
 		if err != nil {
@@ -258,7 +258,7 @@ var dataDownloadCmd = &cobra.Command{
 		}
 		defer database.Close()
 
-		fmt.Println("=== Data Download ===\n")
+		fmt.Println("=== Data Download ===")
 
 		// Filter sources by args if provided
 		allSources := sources.AllSources

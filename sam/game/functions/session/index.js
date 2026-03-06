@@ -21,6 +21,7 @@ exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
 
     try {
+        console.log('ENV CHECK - SESSIONS_TABLE:', SESSIONS_TABLE, 'DYNAMODB_ENDPOINT:', process.env.LOCAL_DYNAMODB_ENDPOINT);
         const ip = event.requestContext?.identity?.sourceIp || 'unknown';
         const ipHash = crypto.createHash('sha256').update(ip).digest('hex');
         const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
