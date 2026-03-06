@@ -528,6 +528,68 @@ go test ./cli/worldanthem/... -v
 cd tests/playwright && npm test
 ```
 
+## Game Backend (SAM / LocalStack)
+
+The "Hot or Not" anthem battle game uses AWS Lambda + DynamoDB, run locally via SAM CLI and LocalStack.
+
+### Prerequisites
+
+- [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
+- [Docker](https://docs.docker.com/get-docker/) (for SAM Lambda containers and LocalStack)
+- [LocalStack](https://localstack.cloud/) (included via `docker-compose.yml`)
+
+### Local Development Setup
+
+**1. Start LocalStack:**
+```bash
+docker compose up -d
+```
+
+**2. Create DynamoDB tables in LocalStack:**
+```bash
+./sam/game/scripts/init-localstack.sh
+```
+
+**3. Seed country rankings:**
+```bash
+./sam/game/scripts/seed-rankings.sh
+```
+
+**4. Create the local env file (gitignored):**
+```bash
+cp sam/game/env.local.json.example sam/game/env.local.json
+# Edit if needed — defaults work for LocalStack
+```
+
+**5. Start the SAM local API:**
+
+> ⚠️ **Important:** You must run SAM with `AWS_ACCESS_KEY_ID=test` to match the credentials
+> LocalStack uses when creating tables. Without this, LocalStack namespaces requests to a
+> different account and returns `ResourceNotFoundException`.
+
+```bash
+cd sam/game
+AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1 \
+  sam local start-api --port 3001 --env-vars env.local.json --warm-containers EAGER
+```
+
+The API is available at `http://localhost:3001`. Endpoints:
+- `POST /session` — create anonymous game session
+- `GET /matchup?session_id=<id>` — get next anthem matchup
+- `POST /vote` — submit a vote
+- `GET /leaderboard` — get ELO rankings
+
+### SAM Template
+
+The Lambda functions and DynamoDB table definitions live in `sam/game/template.yaml`.
+
+### Adding a New Lambda Function
+
+1. Create `sam/game/functions/<name>/index.js`
+2. Add the function to `sam/game/template.yaml`
+3. Add env vars to `sam/game/env.local.json`
+4. Add API tests in `tests/game-api/`
+
 ## Getting Help
 
 - Review documentation in `/docs/`
