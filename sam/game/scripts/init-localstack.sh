@@ -91,7 +91,7 @@ create_table "anthem-listen-history-$STAGE" \
 
 echo ""
 echo "==> All tables ready. Verifying..."
-$AWS dynamodb list-tables --output table
+$AWS dynamodb list-tables --no-paginate --output text
 
 echo ""
 echo "==> Done! LocalStack DynamoDB is ready for local development."

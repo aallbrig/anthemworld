@@ -74,9 +74,12 @@ exports.handler = async (event) => {
             return badRequest('winner_id/loser_id do not match matchup countries.');
         }
 
-        // Rate limit: max votes per session
-        if ((session.vote_count || 0) >= MAX_VOTES_PER_SESSION) {
-            return tooManyRequests(`Maximum ${MAX_VOTES_PER_SESSION} votes per session reached.`, 86400);
+        // Rate limit: max votes per calendar day (UTC) per session
+        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        const voteDate  = session.vote_date  || '';
+        const voteToday = session.vote_date === today ? (session.vote_count_today || 0) : 0;
+        if (voteToday >= MAX_VOTES_PER_SESSION) {
+            return tooManyRequests(`Maximum ${MAX_VOTES_PER_SESSION} votes per day reached. Come back tomorrow!`, 86400);
         }
 
         // Fetch session listen history for both countries
@@ -144,12 +147,12 @@ exports.handler = async (event) => {
                 UpdateExpression: 'SET elo_score = :e, losses = if_not_exists(losses, :z) + :one, updated_at = :t',
                 ExpressionAttributeValues: { ':e': newLoserElo, ':z': 0, ':one': 1, ':t': votedAt },
             })),
-            // Update session vote count + clear active matchup
+            // Update session vote count (daily) + clear active matchup
             db.send(new UpdateCommand({
                 TableName: SESSIONS_TABLE,
                 Key: { session_id },
-                UpdateExpression: 'SET vote_count = if_not_exists(vote_count, :z) + :one REMOVE current_matchup',
-                ExpressionAttributeValues: { ':z': 0, ':one': 1 },
+                UpdateExpression: 'SET vote_count_today = :new_count, vote_date = :today REMOVE current_matchup',
+                ExpressionAttributeValues: { ':new_count': voteToday + 1, ':today': today },
             })),
             // Update listen history for winner
             db.send(new UpdateCommand({

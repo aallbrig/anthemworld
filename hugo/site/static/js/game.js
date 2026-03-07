@@ -22,6 +22,7 @@
   let listenBMs   = 0;
   let listenATimerA = null; // interval handle
   let listenBTimerB = null;
+  let nextMatchupTimer = null; // setTimeout handle for post-vote auto-advance
   let voteCount   = 0;
   let alreadyHeardA = false;
   let alreadyHeardB = false;
@@ -183,6 +184,7 @@
 
   // ─── Matchup ───────────────────────────────────────────────────────────────
   async function loadMatchup() {
+    if (nextMatchupTimer) { clearTimeout(nextMatchupTimer); nextMatchupTimer = null; }
     hide(gameError);
     hide(gameMatchup);
     hide(voteResult);
@@ -315,7 +317,7 @@
     resetMaps();
 
     // Load next matchup after brief pause
-    setTimeout(loadMatchup, 1800);
+    nextMatchupTimer = setTimeout(loadMatchup, 1800);
   }
 
   function showFlash(type, html) {

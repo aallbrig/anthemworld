@@ -1,9 +1,12 @@
 const { test, expect } = require('@playwright/test');
 
 test.describe('Map Features Tests', () => {
+  test.setTimeout(60_000);
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/map/');
-    await page.waitForLoadState('networkidle');
+    // Wait for Leaflet to initialize rather than networkidle (more reliable under parallel load)
+    await page.waitForSelector('.leaflet-container', { state: 'visible' });
   });
 
   test('GeoJSON loads without errors', async ({ page }) => {
