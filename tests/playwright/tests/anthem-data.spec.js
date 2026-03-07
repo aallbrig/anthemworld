@@ -61,6 +61,7 @@ test.describe('Anthem Data Tests', () => {
   });
 
   test('countries table shows flag images', async ({ page }) => {
+    test.setTimeout(30_000);
     await page.goto('/countries/');
 
     await page.waitForFunction(

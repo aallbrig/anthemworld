@@ -37,6 +37,7 @@
     <!-- Country A -->
     <div class="col-md-5">
       <div class="card h-100 shadow-sm" id="card-a">
+        <div id="map-a" style="height:200px; border-radius:0.375rem 0.375rem 0 0; overflow:hidden;"></div>
         <div class="card-body text-center">
           <img id="flag-a" src="" alt="Flag" class="mb-2" style="height:60px; object-fit:contain;">
           <h4 id="name-a" class="card-title"></h4>
@@ -68,6 +69,7 @@
     <!-- Country B -->
     <div class="col-md-5">
       <div class="card h-100 shadow-sm" id="card-b">
+        <div id="map-b" style="height:200px; border-radius:0.375rem 0.375rem 0 0; overflow:hidden;"></div>
         <div class="card-body text-center">
           <img id="flag-b" src="" alt="Flag" class="mb-2" style="height:60px; object-fit:contain;">
           <h4 id="name-b" class="card-title"></h4>
@@ -105,8 +107,6 @@
 
 {{ define "scripts" }}
 <script>
-  // Auto-detect local dev: if running on localhost without a SAM proxy, point to SAM directly.
-  // Override by setting window.GAME_API_URL before this script runs.
   (function() {
     if (!window.GAME_API_URL) {
       const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
@@ -114,5 +114,6 @@
     }
   })();
 </script>
+<script src="/js/country-map.js"></script>
 <script src="/js/game.js"></script>
 {{ end }}
