@@ -11,6 +11,7 @@
   // ─── Config ────────────────────────────────────────────────────────────────
   const API = (window.GAME_API_URL || '').replace(/\/$/, '');
   const MIN_LISTEN_MS = 3000; // must match Lambda env var
+  const GEOJSON_URL   = '/data/countries.geojson';
 
   // ─── State ─────────────────────────────────────────────────────────────────
   let sessionId   = null;
@@ -24,6 +25,31 @@
   let voteCount   = 0;
   let alreadyHeardA = false;
   let alreadyHeardB = false;
+
+  // ─── Maps ──────────────────────────────────────────────────────────────────
+  let mapA = null;
+  let mapB = null;
+  let geojsonCache = null; // loaded once, reused
+
+  function initMaps(geojsonData) {
+    if (mapA) return; // already initialized
+    mapA = new CountryHighlightMap('map-a', geojsonData);
+    mapB = new CountryHighlightMap('map-b', geojsonData);
+  }
+
+  function flyMapsToCountries(isoA, nameA, isoB, nameB) {
+    if (!mapA || !mapB) return;
+    // Invalidate so Leaflet recalculates size after container became visible
+    mapA.invalidate();
+    mapB.invalidate();
+    mapA.flyToCountry(isoA, nameA);
+    mapB.flyToCountry(isoB, nameB);
+  }
+
+  function resetMaps() {
+    if (mapA) mapA.reset();
+    if (mapB) mapB.reset();
+  }
 
   // ─── DOM refs ──────────────────────────────────────────────────────────────
   const $ = id => document.getElementById(id);
@@ -44,12 +70,17 @@
   function hide(el)   { el.classList.add('d-none'); }
 
   async function apiFetch(path, options = {}) {
-    const res = await fetch(`${API}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options,
-    });
-    const body = await res.json().catch(() => ({}));
-    return { ok: res.ok, status: res.status, body };
+    try {
+      const res = await fetch(`${API}${path}`, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+      });
+      const body = await res.json().catch(() => ({}));
+      return { ok: res.ok, status: res.status, body };
+    } catch (err) {
+      // Network error (ECONNREFUSED, DNS failure, etc.)
+      return { ok: false, status: 0, body: { message: 'Network error — is the API server running?' } };
+    }
   }
 
   function showError(title, msg, retryFn) {
@@ -227,6 +258,13 @@
     hide(gameLoading);
     show(gameMatchup);
     show(skipArea);
+
+    // Init maps on first render (container must be visible before Leaflet can measure it)
+    if (geojsonCache && !mapA) initMaps(geojsonCache);
+    flyMapsToCountries(
+      data.country_a.country_id, data.country_a.name,
+      data.country_b.country_id, data.country_b.name
+    );
   }
 
   // ─── Voting ────────────────────────────────────────────────────────────────
@@ -273,6 +311,9 @@
       `✅ Voted for <strong>${winnerName}</strong>! ELO: ${body.winner.old_elo} → ${body.winner.new_elo} (+${eloChange})`
     );
 
+    // Reset maps to world view before next matchup loads
+    resetMaps();
+
     // Load next matchup after brief pause
     setTimeout(loadMatchup, 1800);
   }
@@ -286,10 +327,19 @@
   // ─── Event wiring ──────────────────────────────────────────────────────────
   $('vote-a-btn').addEventListener('click', () => submitVote(countryAId, countryBId));
   $('vote-b-btn').addEventListener('click', () => submitVote(countryBId, countryAId));
-  $('skip-btn').addEventListener('click', loadMatchup);
+  $('skip-btn').addEventListener('click', () => { resetMaps(); loadMatchup(); });
   $('game-retry-btn').addEventListener('click', () => loadMatchup());
 
   // ─── Boot ──────────────────────────────────────────────────────────────────
-  startSession();
+  // Fetch GeoJSON once and cache it; maps initialize lazily on first renderMatchup
+  // (must wait until #game-matchup container is visible for Leaflet to measure size).
+  (async function boot() {
+    try {
+      geojsonCache = await fetch(GEOJSON_URL).then(r => r.json());
+    } catch (e) {
+      console.warn('CountryHighlightMap: could not load GeoJSON', e);
+    }
+    startSession();
+  })();
 
 })();
