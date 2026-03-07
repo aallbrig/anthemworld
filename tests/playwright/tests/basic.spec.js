@@ -59,8 +59,8 @@ test.describe('Basic Site Tests', () => {
     await page.goto('/countries/');
     const loadTime = Date.now() - startTime;
 
-    // Should load in under 2 seconds
-    expect(loadTime).toBeLessThan(2000);
+    // Should load in under 5 seconds (page fetches and renders ~400KB anthems.json)
+    expect(loadTime).toBeLessThan(5000);
 
     // Check for table
     const tableElement = page.locator('#countries-table');

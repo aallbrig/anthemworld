@@ -1,7 +1,8 @@
 // Interactive World Map with Leaflet
 let map;
 let countriesLayer;
-let anthemData = {}; // Loaded from /data/anthems.json
+let anthemData = {};     // keyed by ISO alpha-3 upper/lower
+let anthemByName = {};   // keyed by country name (common_name preferred, then name)
 
 // Load anthem data from generated JSON file
 async function loadAnthemData() {
@@ -9,10 +10,15 @@ async function loadAnthemData() {
         const resp = await fetch('/data/anthems.json');
         if (!resp.ok) return;
         const data = await resp.json();
-        // Index by ISO alpha-3 (both upper and lower case keys for flexibility)
         for (const [key, country] of Object.entries(data)) {
+            // Index by ISO alpha-3
             anthemData[key.toUpperCase()] = country;
             anthemData[key.toLowerCase()] = country;
+            // Build name-based fallback lookup (GeoJSON only has common names)
+            const common = (country.common_name || '').toLowerCase();
+            const formal = (country.name || '').toLowerCase();
+            if (common) anthemByName[common] = country;
+            if (formal) anthemByName[formal] = country;
         }
         console.log('✓ Loaded anthem data for', Object.keys(data).length, 'countries');
     } catch (e) {
@@ -164,7 +170,10 @@ function onCountryClick(e) {
     const countryName = props.name || props.ADMIN || props.NAME || 'Unknown Country';
     const isoCode = (props.iso_a3 || props.ISO_A3 || props.id || '').toUpperCase();
 
-    const countryRecord = anthemData[isoCode] || null;
+    // Try ISO lookup first, then fall back to name-based lookup
+    const countryRecord = anthemData[isoCode]
+        || anthemByName[countryName.toLowerCase()]
+        || null;
     const popupContent = buildPopupContent(countryName, isoCode, countryRecord);
 
     const popup = layer.bindPopup(popupContent, { maxWidth: 320 }).openPopup();

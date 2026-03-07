@@ -18,6 +18,8 @@ Globals:
         MAX_SESSIONS_PER_IP:   "5"
         CORS_ORIGIN:     "*"
         LOCAL_DYNAMODB_ENDPOINT: ""
+        AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1"
+        AWS_REGION_OVERRIDE: ""  # placeholder so env.local.json can set AWS_REGION
 
 Parameters:
   Stage:

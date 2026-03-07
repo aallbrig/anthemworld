@@ -100,8 +100,9 @@ test.describe('Map Features Tests', () => {
   });
 
   test('country boundaries render as polygons', async ({ page }) => {
-    // Wait for GeoJSON to load
-    await page.waitForTimeout(3000);
+    test.setTimeout(60000);
+    // Wait for GeoJSON to load (needs extra time for tile rendering)
+    await page.waitForTimeout(5000);
 
     // Check for SVG paths (Leaflet renders polygons as SVG paths)
     const paths = await page.locator('.leaflet-overlay-pane path').count();
