@@ -13,7 +13,7 @@ REGION="us-east-1"
 AWS="aws --endpoint-url=$ENDPOINT --region=$REGION"
 
 echo "==> Waiting for LocalStack to be ready..."
-until curl -sf "$ENDPOINT/_localstack/health" | grep -q '"dynamodb": "available"'; do
+until curl -sf "$ENDPOINT/_localstack/health" | python3 -c "import sys,json; d=json.load(sys.stdin); s=d.get('services',{}).get('dynamodb',''); exit(0 if s in ('available','running') else 1)" 2>/dev/null; do
     sleep 2
 done
 echo "==> LocalStack ready."
