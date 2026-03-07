@@ -14,6 +14,10 @@
 
 const { test, expect } = require('@playwright/test');
 
+// These tests require the SAM game API running at localhost:3001.
+// In CI there is no LocalStack/SAM stack, so skip the entire suite.
+test.skip(!!process.env.CI, 'requires SAM game API at localhost:3001 (not available in CI)');
+
 const GAME_URL   = 'http://localhost:1313/game/';
 const SAM_URL    = 'http://localhost:3001';
 const PAGE_TIMEOUT = 60_000; // SAM Lambda cold starts can take 15-20s

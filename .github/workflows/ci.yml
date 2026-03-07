@@ -16,7 +16,7 @@ jobs:
       run:
         working-directory: cli/worldanthem
     env:
-      GOWORK: ${{ github.workspace }}/go.work
+      GOWORK: off
     steps:
       - uses: actions/checkout@v4
 
