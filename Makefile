@@ -11,7 +11,7 @@ BINARY     := worldanthem
 CLI_DIR    := cli/worldanthem
 INSTALL_DIR := $(HOME)/bin
 
-.PHONY: build install clean dev game-install game-up game-down game-init game-start game-dev
+.PHONY: build install clean dev game-install game-up game-down game-init game-start game-dev dev-reset
 
 build:
 	go build $(LDFLAGS) -o $(BINARY) ./$(CLI_DIR)
@@ -55,4 +55,9 @@ game-dev: game-up game-init game-start
 # One-command full local dev (LocalStack + SAM + Hugo)
 dev:
 	bash scripts/dev-local.sh
+
+# Clear all DynamoDB session/vote/listen data from LocalStack and re-seed rankings.
+# Use when rate limits accumulate across test runs (e.g. MAX_SESSIONS_PER_IP exhausted).
+dev-reset:
+	./sam/game/scripts/dev-reset.sh
 
