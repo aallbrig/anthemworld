@@ -146,7 +146,24 @@ cd sam/game && npm test           # Game API unit tests (10 tests)
 - Verify API: `curl -X POST http://localhost:3001/session`
 - DynamoDB region mismatch: tables are always created in `us-east-1` (LocalStack scoped by region)
 
-**Map popups show no anthem data?**
+**Game API returns 429 "Maximum sessions per IP" during tests?**
+- LocalStack accumulates sessions across runs (TTL expiry is not enforced locally)
+- Clear stale sessions:
+  ```bash
+  AWS_DEFAULT_REGION=us-east-1 aws --endpoint-url=http://localhost:4566 dynamodb scan \
+    --table-name anthem-sessions-local --attributes-to-get session_id --output json \
+    | python3 -c "
+  import sys,json,subprocess
+  for item in json.load(sys.stdin).get('Items',[]):
+      sid = item['session_id']['S']
+      subprocess.run(['aws','--endpoint-url=http://localhost:4566','--region','us-east-1',
+          'dynamodb','delete-item','--table-name','anthem-sessions-local',
+          '--key','{\"session_id\":{\"S\":\"'+sid+'\"}}'], capture_output=True)
+  print('Sessions cleared')
+  "
+  ```
+
+
 - Ensure `hugo/site/static/data/anthems.json` exists: `ls -lh hugo/site/static/data/`
 - If missing: `./worldanthem data format --output hugo/site/static/data`
 
