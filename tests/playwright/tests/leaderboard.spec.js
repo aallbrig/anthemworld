@@ -5,6 +5,10 @@
 
 const { test, expect } = require('@playwright/test');
 
+// These tests require the SAM game API running at localhost:3001.
+// In CI there is no LocalStack/SAM stack, so skip the entire suite.
+test.skip(!!process.env.CI, 'requires SAM game API at localhost:3001 (not available in CI)');
+
 const LB_URL = 'http://localhost:1313/leaderboard/';
 
 test.describe('Leaderboard page', () => {
