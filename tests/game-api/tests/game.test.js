@@ -244,7 +244,32 @@ describe('GET /leaderboard', () => {
   });
 });
 
-// ─── ELO logic unit tests ─────────────────────────────────────────────────
+// ─── Audio URL validation ──────────────────────────────────────────────────
+
+describe('GET /matchup — audio_url presence', () => {
+  test('at least one country in a matchup has an audio_url', async () => {
+    // Request several matchups and verify at least one country per matchup
+    // has an audio_url (Wikimedia Commons). The seed data has ~172/239 countries
+    // with audio; over 3 matchups the probability of hitting at least one is >99%.
+    let foundAudio = false;
+    for (let i = 0; i < 3 && !foundAudio; i++) {
+      const sessionRes = await api('/session', { method: 'POST' });
+      if (sessionRes.status !== 201) continue;
+      const sid = sessionRes.body.session_id;
+      const matchupRes = await api(`/matchup?session_id=${sid}`);
+      if (matchupRes.status !== 200) continue;
+      const { country_a, country_b } = matchupRes.body;
+      if (country_a.audio_url || country_b.audio_url) {
+        foundAudio = true;
+        // Validate the URL looks like a Wikimedia Commons URL
+        const url = country_a.audio_url || country_b.audio_url;
+        assert.match(url, /^https?:\/\//, 'audio_url should be an absolute URL');
+      }
+    }
+    assert.ok(foundAudio, 'Expected at least one country with audio_url across 3 matchups');
+  });
+});
+
 
 describe('ELO logic (unit)', () => {
   const { updateElo, INITIAL_ELO } = require('../../../sam/game/functions/shared/elo');
