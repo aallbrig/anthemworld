@@ -1,0 +1,97 @@
+{{ define "title" }}{{ .Title }} — {{ .Site.Title }}{{ end }}
+
+{{ define "main" }}
+<div class="container my-5" id="country-detail" data-iso="{{ .Params.iso }}">
+
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/">Home</a></li>
+      <li class="breadcrumb-item"><a href="/countries/">Countries</a></li>
+      <li class="breadcrumb-item active" aria-current="page" id="breadcrumb-name">{{ .Title }}</li>
+    </ol>
+  </nav>
+
+  {{/* Loading state */}}
+  <div id="country-loading" class="text-center py-5">
+    <div class="spinner-border text-secondary" role="status">
+      <span class="visually-hidden">Loading…</span>
+    </div>
+  </div>
+
+  {{/* Error state */}}
+  <div id="country-error" class="alert alert-warning d-none">
+    Country data could not be loaded.
+  </div>
+
+  {{/* Content — populated by country-detail.js */}}
+  <div id="country-content" class="d-none">
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body text-center">
+            <img id="cd-flag" src="" alt="" class="img-fluid mb-3 border d-none" style="max-height:140px;">
+            <h1 class="h4 mb-1" id="cd-common-name"></h1>
+            <p class="text-muted small mb-2 d-none" id="cd-official-name"></p>
+            <span class="badge bg-secondary" id="cd-iso"></span>
+            <span class="badge bg-light text-dark border ms-1 d-none" id="cd-region"></span>
+          </div>
+          <ul class="list-group list-group-flush text-center" id="cd-meta-list">
+            <li class="list-group-item d-none" id="cd-capital-item">
+              <small class="text-muted">Capital</small><br><span id="cd-capital"></span>
+            </li>
+            <li class="list-group-item d-none" id="cd-subregion-item">
+              <small class="text-muted">Subregion</small><br><span id="cd-subregion"></span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="col-md-8">
+        <div class="card shadow-sm mb-4" id="cd-anthem-card">
+          <div class="card-header d-flex align-items-center gap-2">
+            <span class="fs-4">🎵</span>
+            <h2 class="h5 mb-0">National Anthem</h2>
+          </div>
+          <div class="card-body">
+            <h3 class="h4 mb-1" id="cd-anthem-name"></h3>
+            <p class="text-muted mb-3 d-none" id="cd-anthem-title-en"></p>
+            <dl class="row mb-0" id="cd-anthem-dl"></dl>
+          </div>
+          <div class="card-footer text-muted small d-none" id="cd-anthem-history"></div>
+        </div>
+
+        <div class="card shadow-sm mb-4 d-none" id="cd-audio-card">
+          <div class="card-header d-flex align-items-center gap-2">
+            <span class="fs-4">🔊</span>
+            <h2 class="h5 mb-0">Listen</h2>
+          </div>
+          <div class="card-body">
+            <audio id="cd-audio" controls class="w-100" preload="none"></audio>
+            <p class="text-muted small mt-1 mb-0 d-none" id="cd-audio-license"></p>
+          </div>
+        </div>
+
+        <div class="alert alert-light border d-none" id="cd-no-audio">
+          <span class="me-2">🔇</span>
+          Audio recording not yet available for this anthem.
+          <a href="https://commons.wikimedia.org/wiki/Category:National_anthems"
+             target="_blank" rel="noopener" class="alert-link">Wikimedia Commons ↗</a>
+        </div>
+
+        <div class="card shadow-sm d-none" id="cd-identity-card">
+          <div class="card-header">
+            <h2 class="h5 mb-0">National Identity</h2>
+          </div>
+          <div class="card-body">
+            <dl class="row mb-0" id="cd-identity-dl"></dl>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+<script src="/js/country-detail.js"></script>
+{{ end }}

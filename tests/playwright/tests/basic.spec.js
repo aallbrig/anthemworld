@@ -90,6 +90,9 @@ test.describe('Basic Site Tests', () => {
     const failedRequests = [];
 
     page.on('requestfailed', request => {
+      const errorText = request.failure()?.errorText || '';
+      // NS_BINDING_ABORTED / net::ERR_ABORTED = request cancelled by navigation (not a real failure)
+      if (errorText === 'NS_BINDING_ABORTED' || errorText === 'net::ERR_ABORTED') return;
       failedRequests.push({
         url: request.url(),
         failure: request.failure()
@@ -100,7 +103,7 @@ test.describe('Basic Site Tests', () => {
     await page.goto('/map/');
     await page.goto('/countries/');
 
-    // Should have no failed requests
+    // Should have no genuinely failed requests (aborted-by-navigation excluded above)
     expect(failedRequests).toHaveLength(0);
   });
 });
