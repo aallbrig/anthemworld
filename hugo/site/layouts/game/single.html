@@ -14,6 +14,25 @@
   <div id="score-bar" class="d-none text-center mb-3">
     <span class="badge bg-secondary me-2">Votes: <span id="vote-count">0</span></span>
     <a href="/leaderboard/" class="btn btn-sm btn-outline-primary">🏆 Leaderboard</a>
+    <button class="btn btn-sm btn-outline-secondary ms-1" type="button"
+      data-bs-toggle="collapse" data-bs-target="#how-it-works" aria-expanded="false">
+      ❓ How it works
+    </button>
+  </div>
+
+  <!-- How it works (collapsed) -->
+  <div class="collapse mb-3" id="how-it-works">
+    <div class="card card-body mx-auto text-start" style="max-width:640px">
+      <h6 class="fw-bold mb-2">How Anthem Battle works</h6>
+      <ul class="mb-2 small">
+        <li><strong>Listen first:</strong> You must listen to each anthem for at least 3 seconds before your vote counts.</li>
+        <li><strong>Vote:</strong> Click "Vote for this anthem" to declare a winner. The other anthem gets a loss.</li>
+        <li><strong>ELO ratings:</strong> Wins and losses update each country's ELO score (starting at 1500, K=32). A win against a higher-rated country earns more points.</li>
+        <li><strong>Wildcard:</strong> Occasionally a lower-ranked anthem is matched against a higher-ranked one — upsets are worth more.</li>
+        <li><strong>Skip:</strong> Not feeling it? Skip the matchup and get a fresh pair.</li>
+      </ul>
+      <p class="mb-0 small text-muted">Your session is stored in this browser tab. Votes are anonymous.</p>
+    </div>
   </div>
 
   <!-- Loading spinner -->
