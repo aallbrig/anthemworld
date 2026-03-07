@@ -105,8 +105,14 @@
 
 {{ define "scripts" }}
 <script>
-  // Game API base URL — override via window.GAME_API_URL for local dev
-  window.GAME_API_URL = window.GAME_API_URL || '';
+  // Auto-detect local dev: if running on localhost without a SAM proxy, point to SAM directly.
+  // Override by setting window.GAME_API_URL before this script runs.
+  (function() {
+    if (!window.GAME_API_URL) {
+      const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      window.GAME_API_URL = isLocal ? 'http://localhost:3001' : '';
+    }
+  })();
 </script>
 <script src="/js/game.js"></script>
 {{ end }}
