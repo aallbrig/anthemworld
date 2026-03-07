@@ -197,6 +197,13 @@ audio.json
 geography.json
 bin/
 
+# Generated data files
+hugo/site/static/data/index.json
+
+# Playwright local test reports
+tests/playwright/playwright-report/
+tests/playwright/test-results/
+
 # AWS SAM
 .aws-sam/
 samconfig.toml
