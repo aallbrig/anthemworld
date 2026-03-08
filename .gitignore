@@ -1,5 +1,5 @@
-# build cli @ root of repo
-worldanthem
+# build cli @ root of repo (binary built by `make build`)
+/worldanthem
 bin/
 # jetbrains ides ftw
 .idea
