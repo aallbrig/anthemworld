@@ -13,7 +13,6 @@ Globals:
         VOTES_TABLE:     !Ref VotesTable
         SESSIONS_TABLE:  !Ref SessionsTable
         LISTEN_TABLE:    !Ref ListenHistoryTable
-        MIN_LISTEN_MS:   "3000"
         MAX_VOTES_PER_SESSION: "100"
         MAX_SESSIONS_PER_IP:   "5"
         CORS_ORIGIN:     "*"

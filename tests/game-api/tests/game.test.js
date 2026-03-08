@@ -147,7 +147,7 @@ describe('POST /vote', () => {
     assert.equal(status, 403);
   });
 
-  test('returns 422 when listen time insufficient', async () => {
+  test('accepts vote with minimal listen time (partial weight)', async () => {
     if (!hasMatchup) {
       console.log('    ℹ Skipping — no matchup available (empty rankings table)');
       return;
@@ -157,32 +157,42 @@ describe('POST /vote', () => {
       body: JSON.stringify({
         session_id: voteSessionId, matchup_id: matchupId,
         winner_id: countryAId, loser_id: countryBId,
-        listen_a_ms: 100, listen_b_ms: 100,  // too short
-      }),
-    });
-    assert.equal(status, 422, `Expected 422, got ${status}: ${JSON.stringify(body)}`);
-    assert.ok(body.message, 'Expected error message');
-  });
-
-  test('accepts vote with sufficient listen time', async () => {
-    if (!hasMatchup) {
-      console.log('    ℹ Skipping — no matchup available (empty rankings table)');
-      return;
-    }
-    const { status, body } = await api('/vote', {
-      method: 'POST',
-      body: JSON.stringify({
-        session_id: voteSessionId, matchup_id: matchupId,
-        winner_id: countryAId, loser_id: countryBId,
-        listen_a_ms: 5000, listen_b_ms: 5000,
+        listen_a_ms: 100, listen_b_ms: 100,  // minimal listen — accepted, but low weight
       }),
     });
     assert.equal(status, 200, `Expected 200, got ${status}: ${JSON.stringify(body)}`);
     assert.ok(body.vote_id, 'Missing vote_id');
+    assert.equal(typeof body.vote_weight, 'number', 'vote_weight should be a number');
+    assert.ok(body.vote_weight >= 0 && body.vote_weight <= 1, `vote_weight out of range: ${body.vote_weight}`);
+    assert.ok(body.vote_weight < 1, 'Expected partial weight for short listen');
+  });
+
+  test('accepts vote and returns vote_weight', async () => {
+    if (!hasMatchup) {
+      console.log('    ℹ Skipping — no matchup available (empty rankings table)');
+      return;
+    }
+    // Need a fresh matchup since the previous test consumed it
+    const matchupRes = await api(`/matchup?session_id=${voteSessionId}`);
+    if (matchupRes.status !== 200) {
+      console.log('    ℹ Skipping — could not load new matchup');
+      return;
+    }
+    const { matchup_id, country_a, country_b } = matchupRes.body;
+    const { status, body } = await api('/vote', {
+      method: 'POST',
+      body: JSON.stringify({
+        session_id: voteSessionId, matchup_id,
+        winner_id: country_a.country_id, loser_id: country_b.country_id,
+        listen_a_ms: 10000, listen_b_ms: 10000,  // full listen
+      }),
+    });
+    assert.equal(status, 200, `Expected 200, got ${status}: ${JSON.stringify(body)}`);
+    assert.ok(body.vote_id, 'Missing vote_id');
+    assert.equal(body.vote_weight, 1, 'Expected full weight (1.0) for 10s listen');
     assert.ok(body.winner, 'Missing winner');
     assert.ok(body.loser, 'Missing loser');
     assert.equal(typeof body.winner.new_elo, 'number', 'new_elo should be a number');
-    assert.ok(body.winner.new_elo !== body.winner.old_elo, 'ELO should change after vote');
   });
 
   test('returns 400 for stale matchup_id', async () => {
@@ -295,6 +305,30 @@ describe('ELO logic (unit)', () => {
     const { winner, loser } = updateElo(1200, 1800);
     // Expected score for 1200 vs 1800 is ~0.09, so gain ≈ K*(1-0.09) ≈ 29
     assert.ok(winner > 1220 && winner < 1235, `Winner ELO ${winner} out of expected range`);
+  });
+
+  test('vote_weight is 1.0 when both anthems heard >= 10s', () => {
+    const { vote_weight } = updateElo(1500, 1500, 10000, 10000);
+    assert.equal(vote_weight, 1);
+  });
+
+  test('vote_weight is 1.0 when defaults used (no listen args)', () => {
+    const { vote_weight } = updateElo(1500, 1500);
+    assert.equal(vote_weight, 1);
+  });
+
+  test('vote_weight is fractional when listen time is short', () => {
+    const { vote_weight, winner } = updateElo(1500, 1500, 5000, 5000); // 5s each → 0.5 * 0.5 = 0.25
+    assert.equal(vote_weight, 0.25);
+    // ELO change should be scaled: ~16 * 0.25 = 4
+    assert.ok(winner > 1500 && winner < 1510, `Winner ELO ${winner} out of expected range for partial weight`);
+  });
+
+  test('vote_weight of 0 when no listening', () => {
+    const { vote_weight, winner, loser } = updateElo(1500, 1500, 0, 0);
+    assert.equal(vote_weight, 0);
+    assert.equal(winner, 1500, 'ELO should not change with zero listen time');
+    assert.equal(loser, 1500, 'ELO should not change with zero listen time');
   });
 });
 
