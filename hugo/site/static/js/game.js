@@ -10,7 +10,6 @@
 
   // ─── Config ────────────────────────────────────────────────────────────────
   const API = (window.GAME_API_URL || '').replace(/\/$/, '');
-  const MIN_LISTEN_MS = 3000; // must match Lambda env var
   const GEOJSON_URL   = '/data/countries.geojson';
 
   // ─── State ─────────────────────────────────────────────────────────────────
@@ -24,8 +23,6 @@
   let listenBTimerB = null;
   let nextMatchupTimer = null; // setTimeout handle for post-vote auto-advance
   let voteCount   = 0;
-  let alreadyHeardA = false;
-  let alreadyHeardB = false;
 
   // ─── Maps ──────────────────────────────────────────────────────────────────
   let mapA = null;
@@ -111,12 +108,6 @@
 
       if (side === 'a') { listenAMs = total; }
       else              { listenBMs = total; }
-
-      // Enable vote button once minimum listen time met
-      const alreadyHeard = side === 'a' ? alreadyHeardA : alreadyHeardB;
-      if (alreadyHeard || total >= MIN_LISTEN_MS) {
-        voteBtn.disabled = false;
-      }
     }, 100);
 
     if (side === 'a') {
@@ -132,14 +123,8 @@
     }
   }
 
-  function wireAudio(side, alreadyHeard) {
+  function wireAudio(side) {
     const audioEl = $(side === 'a' ? 'audio-a' : 'audio-b');
-    const voteBtn = $(side === 'a' ? 'vote-a-btn' : 'vote-b-btn');
-
-    // If already heard before, enable voting immediately
-    if (alreadyHeard) {
-      voteBtn.disabled = false;
-    }
 
     audioEl.onplay = () => {
       // Stop other audio (AudioController if available)
@@ -226,8 +211,6 @@
     // Restore prior listen from server (total across session)
     listenAMs  = data.country_a.listen_ms || 0;
     listenBMs  = data.country_b.listen_ms || 0;
-    alreadyHeardA = listenAMs >= MIN_LISTEN_MS;
-    alreadyHeardB = listenBMs >= MIN_LISTEN_MS;
 
     // Populate card A
     $('flag-a').src  = data.country_a.flag_url || '';
@@ -237,7 +220,7 @@
     $('elo-a').textContent    = data.country_a.elo_score || 1500;
     $('audio-a').src = data.country_a.audio_url || '';
     $('listen-timer-a').textContent = (listenAMs / 1000).toFixed(1);
-    $('vote-a-btn').disabled  = !alreadyHeardA;
+    $('vote-a-btn').disabled  = false;
     if (listenAMs > 0) show($('listen-indicator-a')); else hide($('listen-indicator-a'));
 
     // Populate card B
@@ -248,14 +231,14 @@
     $('elo-b').textContent    = data.country_b.elo_score || 1500;
     $('audio-b').src = data.country_b.audio_url || '';
     $('listen-timer-b').textContent = (listenBMs / 1000).toFixed(1);
-    $('vote-b-btn').disabled  = !alreadyHeardB;
+    $('vote-b-btn').disabled  = false;
     if (listenBMs > 0) show($('listen-indicator-b')); else hide($('listen-indicator-b'));
 
     // Wildcard badge
     if (data.is_wildcard) show($('wildcard-badge')); else hide($('wildcard-badge'));
 
-    wireAudio('a', alreadyHeardA);
-    wireAudio('b', alreadyHeardB);
+    wireAudio('a');
+    wireAudio('b');
 
     hide(gameLoading);
     show(gameMatchup);
@@ -287,14 +270,6 @@
       }),
     });
 
-    if (status === 422) {
-      // Listen requirements not met — re-enable buttons
-      $('vote-a-btn').disabled = false;
-      $('vote-b-btn').disabled = false;
-      show(skipArea);
-      showFlash('warning', `Listen for at least ${MIN_LISTEN_MS / 1000}s before voting. ` + (body.message || ''));
-      return;
-    }
     if (status === 429) {
       showError('Vote limit reached', body.message, null);
       return;
@@ -309,8 +284,10 @@
 
     const winnerName = winnerId === countryAId ? $('name-a').textContent : $('name-b').textContent;
     const eloChange  = body.winner.new_elo - body.winner.old_elo;
+    const weightPct  = Math.round((body.vote_weight || 0) * 100);
+    const weightNote = weightPct < 100 ? ` <small class="text-muted">(${weightPct}% weight — listen longer for full impact)</small>` : '';
     showFlash('success',
-      `✅ Voted for <strong>${winnerName}</strong>! ELO: ${body.winner.old_elo} → ${body.winner.new_elo} (+${eloChange})`
+      `✅ Voted for <strong>${winnerName}</strong>! ELO: ${body.winner.old_elo} → ${body.winner.new_elo} (+${eloChange})${weightNote}`
     );
 
     // Reset maps to world view before next matchup loads

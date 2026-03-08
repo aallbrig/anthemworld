@@ -34,7 +34,8 @@ exports.handler = async (event) => {
 
         // Fetch all ranked countries (scan is fine at 193 items)
         const scanRes = await db.send(new ScanCommand({ TableName: RANKINGS_TABLE }));
-        const allCountries = scanRes.Items || [];
+        // Only battle countries that have an audio file
+        const allCountries = (scanRes.Items || []).filter(c => c.audio_url);
 
         if (allCountries.length < 2) {
             return serverError('Not enough countries in rankings table. Run data initialization first.');

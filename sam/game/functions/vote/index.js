@@ -4,33 +4,35 @@
  *
  * Validates:
  *   - Session exists and matchup_id matches current matchup
- *   - Both anthems heard for at least MIN_LISTEN_MS (unless session history shows prior listen)
  *   - Session vote count < MAX_VOTES_PER_SESSION per day
  *
+ * ELO is weighted by cumulative listen time for each anthem (any round):
+ *   - Full weight (1.0) when both anthems heard ≥ FULL_LISTEN_MS (10 s)
+ *   - Partial weight proportional to listen time otherwise
+ *   - vote_weight = listenWeight(winner) × listenWeight(loser)
+ *
  * On success:
- *   - Updates ELO scores
+ *   - Updates ELO scores (scaled by vote_weight)
  *   - Stores vote record
  *   - Updates session vote count
  *   - Updates listen history
- *   - Returns updated ELO scores + next matchup hint
+ *   - Returns updated ELO scores + vote_weight
  *
- * Response 200: { vote_id, winner: { country_id, new_elo }, loser: { country_id, new_elo } }
+ * Response 200: { vote_id, vote_weight, winner: { country_id, old_elo, new_elo }, loser: { ... } }
  * Response 400: bad request
  * Response 403: session not found
- * Response 422: listen requirements not met
  * Response 429: rate limited
  */
 const { GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../shared/db');
 const { updateElo, INITIAL_ELO } = require('../shared/elo');
-const { ok, badRequest, forbidden, unprocessable, tooManyRequests, serverError, options } = require('../shared/response');
+const { ok, badRequest, forbidden, tooManyRequests, serverError, options } = require('../shared/response');
 
 const SESSIONS_TABLE         = process.env.SESSIONS_TABLE;
 const RANKINGS_TABLE         = process.env.RANKINGS_TABLE;
 const VOTES_TABLE            = process.env.VOTES_TABLE;
 const LISTEN_TABLE           = process.env.LISTEN_TABLE;
-const MIN_LISTEN_MS          = parseInt(process.env.MIN_LISTEN_MS || '3000', 10);
 const MAX_VOTES_PER_SESSION  = parseInt(process.env.MAX_VOTES_PER_SESSION || '100', 10);
 
 exports.handler = async (event) => {
@@ -96,19 +98,9 @@ exports.handler = async (event) => {
         const listenWinner = winner_id === country_a ? listen_a_ms : listen_b_ms;
         const listenLoser  = loser_id  === country_a ? listen_a_ms : listen_b_ms;
 
-        // Check listen requirement: new anthems need MIN_LISTEN_MS, previously heard ones are instant
-        const winnerQualifies = (priorListenWinner >= MIN_LISTEN_MS) || (listenWinner >= MIN_LISTEN_MS);
-        const loserQualifies  = (priorListenLoser  >= MIN_LISTEN_MS) || (listenLoser  >= MIN_LISTEN_MS);
-
-        if (!winnerQualifies || !loserQualifies) {
-            const needed = [];
-            if (!winnerQualifies) needed.push({ country_id: winner_id, required_ms: MIN_LISTEN_MS, listened_ms: listenWinner });
-            if (!loserQualifies)  needed.push({ country_id: loser_id,  required_ms: MIN_LISTEN_MS, listened_ms: listenLoser });
-            return unprocessable(
-                `You must listen to each anthem for at least ${MIN_LISTEN_MS / 1000} seconds before voting.`,
-                { insufficient_listen: needed }
-            );
-        }
+        // Compute cumulative listen time (prior history + this round)
+        const totalListenWinner = priorListenWinner + listenWinner;
+        const totalListenLoser  = priorListenLoser  + listenLoser;
 
         // Fetch current ELO scores
         const [winnerRankRes, loserRankRes] = await Promise.all([
@@ -118,7 +110,7 @@ exports.handler = async (event) => {
 
         const winnerElo = winnerRankRes.Item?.elo_score ?? INITIAL_ELO;
         const loserElo  = loserRankRes.Item?.elo_score  ?? INITIAL_ELO;
-        const { winner: newWinnerElo, loser: newLoserElo } = updateElo(winnerElo, loserElo);
+        const { winner: newWinnerElo, loser: newLoserElo, vote_weight } = updateElo(winnerElo, loserElo, totalListenWinner, totalListenLoser);
 
         const voteId  = uuidv4();
         const votedAt = new Date().toISOString();
@@ -158,22 +150,23 @@ exports.handler = async (event) => {
             db.send(new UpdateCommand({
                 TableName: LISTEN_TABLE,
                 Key: { pk: `${session_id}#${winner_id}` },
-                UpdateExpression: 'SET total_listen_ms = if_not_exists(total_listen_ms, :z) + :ms, #ttl = :ttl',
+                UpdateExpression: 'SET total_listen_ms = :total, #ttl = :ttl',
                 ExpressionAttributeNames: { '#ttl': 'ttl' },
-                ExpressionAttributeValues: { ':z': 0, ':ms': listenWinner, ':ttl': listenTtl },
+                ExpressionAttributeValues: { ':total': totalListenWinner, ':ttl': listenTtl },
             })),
             // Update listen history for loser
             db.send(new UpdateCommand({
                 TableName: LISTEN_TABLE,
                 Key: { pk: `${session_id}#${loser_id}` },
-                UpdateExpression: 'SET total_listen_ms = if_not_exists(total_listen_ms, :z) + :ms, #ttl = :ttl',
+                UpdateExpression: 'SET total_listen_ms = :total, #ttl = :ttl',
                 ExpressionAttributeNames: { '#ttl': 'ttl' },
-                ExpressionAttributeValues: { ':z': 0, ':ms': listenLoser, ':ttl': listenTtl },
+                ExpressionAttributeValues: { ':total': totalListenLoser, ':ttl': listenTtl },
             })),
         ]);
 
         return ok({
-            vote_id: voteId,
+            vote_id:     voteId,
+            vote_weight,
             winner: { country_id: winner_id, old_elo: winnerElo, new_elo: newWinnerElo },
             loser:  { country_id: loser_id,  old_elo: loserElo,  new_elo: newLoserElo },
         });
