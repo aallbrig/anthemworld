@@ -126,10 +126,10 @@
   function wireAudio(side) {
     const audioEl = $(side === 'a' ? 'audio-a' : 'audio-b');
 
+    // Register with AudioController so playing one anthem pauses the other.
+    window.AudioController.register(audioEl);
+
     audioEl.onplay = () => {
-      // Stop other audio (AudioController if available)
-      if (window.AudioController) window.AudioController.stopAll();
-      audioEl.play();
       startListenTimer(side);
     };
   }
