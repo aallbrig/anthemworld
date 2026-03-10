@@ -69,6 +69,13 @@ else
 fi
 
 # ── 4. SAM local API ─────────────────────────────────────────────────────────
+# Kill any stale process holding the port (e.g. from a previous run that wasn't
+# shut down cleanly with Ctrl+C / SIGTERM).
+if lsof -ti :"$SAM_PORT" >/dev/null 2>&1; then
+  warn "Port $SAM_PORT in use — killing stale process..."
+  kill "$(lsof -ti :"$SAM_PORT")" 2>/dev/null || true
+  sleep 1
+fi
 info "Starting SAM local API on port $SAM_PORT..."
 cd "$SAM_DIR"
 sam local start-api \
@@ -89,6 +96,11 @@ for i in $(seq 1 20); do
 done
 
 # ── 5. Hugo dev server ───────────────────────────────────────────────────────
+if lsof -ti :"$HUGO_PORT" >/dev/null 2>&1; then
+  warn "Port $HUGO_PORT in use — killing stale process..."
+  kill "$(lsof -ti :"$HUGO_PORT")" 2>/dev/null || true
+  sleep 1
+fi
 info "Starting Hugo dev server on port $HUGO_PORT..."
 cd "$HUGO_DIR"
 hugo server -D --port "$HUGO_PORT" --bind 127.0.0.1 2>&1 &
