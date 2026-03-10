@@ -11,6 +11,18 @@
   // ─── Config ────────────────────────────────────────────────────────────────
   const API = (window.GAME_API_URL || '').replace(/\/$/, '');
   const GEOJSON_URL   = '/data/countries.geojson';
+  // Must match FULL_LISTEN_MS in sam/game/functions/shared/elo.js
+  const FULL_LISTEN_MS = 10_000;
+
+  // ─── localStorage helpers ──────────────────────────────────────────────────
+  // Tracks which country anthems the user has heard in full (played to the end).
+  // Key: "aw_heard_full:<ISO>"  Value: "1"
+  function markHeardFull(countryId) {
+    try { localStorage.setItem(`aw_heard_full:${countryId}`, '1'); } catch (_) {}
+  }
+  function hasHeardFull(countryId) {
+    try { return localStorage.getItem(`aw_heard_full:${countryId}`) === '1'; } catch (_) { return false; }
+  }
 
   // ─── State ─────────────────────────────────────────────────────────────────
   let sessionId   = null;
@@ -94,8 +106,10 @@
   function startListenTimer(side) {
     const audioEl    = $(side === 'a' ? 'audio-a' : 'audio-b');
     const timerEl    = $(side === 'a' ? 'listen-timer-a' : 'listen-timer-b');
+    const barEl      = $(side === 'a' ? 'listen-bar-a' : 'listen-bar-b');
+    const statusEl   = $(side === 'a' ? 'listen-status-a' : 'listen-status-b');
     const indicatorEl = $(side === 'a' ? 'listen-indicator-a' : 'listen-indicator-b');
-    const voteBtn    = $(side === 'a' ? 'vote-a-btn' : 'vote-b-btn');
+    const countryId  = side === 'a' ? countryAId : countryBId;
     const startMs    = Date.now();
     const priorMs    = side === 'a' ? listenAMs : listenBMs;
 
@@ -108,18 +122,68 @@
 
       if (side === 'a') { listenAMs = total; }
       else              { listenBMs = total; }
+
+      updateListenProgress(side, total);
     }, 100);
 
     if (side === 'a') {
       if (listenATimerA) clearInterval(listenATimerA);
       listenATimerA = interval;
       audioEl.onpause = () => clearInterval(listenATimerA);
-      audioEl.onended = () => clearInterval(listenATimerA);
+      audioEl.onended = () => {
+        clearInterval(listenATimerA);
+        markHeardFull(countryId);
+        updateListenProgress(side, side === 'a' ? listenAMs : listenBMs);
+      };
     } else {
       if (listenBTimerB) clearInterval(listenBTimerB);
       listenBTimerB = interval;
       audioEl.onpause = () => clearInterval(listenBTimerB);
-      audioEl.onended = () => clearInterval(listenBTimerB);
+      audioEl.onended = () => {
+        clearInterval(listenBTimerB);
+        markHeardFull(countryId);
+        updateListenProgress(side, side === 'a' ? listenAMs : listenBMs);
+      };
+    }
+  }
+
+  function updateListenProgress(side, totalMs) {
+    const barEl    = $(side === 'a' ? 'listen-bar-a' : 'listen-bar-b');
+    const statusEl = $(side === 'a' ? 'listen-status-a' : 'listen-status-b');
+    const timerEl  = $(side === 'a' ? 'listen-timer-a' : 'listen-timer-b');
+    const pct      = Math.min(100, (totalMs / FULL_LISTEN_MS) * 100);
+    const full     = pct >= 100;
+
+    barEl.style.width = pct + '%';
+    barEl.classList.toggle('bg-success', full);
+    barEl.classList.toggle('bg-primary', !full);
+
+    if (full) {
+      statusEl.innerHTML = '✅ Full weight achieved!';
+    } else {
+      timerEl.textContent = (totalMs / 1000).toFixed(1);
+    }
+
+    updateWeightHint();
+  }
+
+  function updateWeightHint() {
+    const wA = Math.min(listenAMs / FULL_LISTEN_MS, 1);
+    const wB = Math.min(listenBMs / FULL_LISTEN_MS, 1);
+    const combined = Math.round(wA * wB * 100);
+
+    const hintEl  = $('weight-hint');
+    const liveEl  = $('weight-live');
+    if (!hintEl || !liveEl) return;
+
+    show(hintEl);
+
+    if (combined >= 100) {
+      liveEl.innerHTML = '🏆 Your vote carries <span class="text-success">full weight</span> this round!';
+    } else if (combined > 0) {
+      liveEl.innerHTML = `Current vote weight: <span class="text-warning">${combined}%</span> — keep listening to increase it.`;
+    } else {
+      liveEl.innerHTML = '';
     }
   }
 
@@ -175,6 +239,7 @@
     hide(voteResult);
     hide(skipArea);
     show(gameLoading);
+    hide($('weight-hint'));
 
     // Reset listen state
     listenAMs = 0;
@@ -208,9 +273,15 @@
     countryAId = data.country_a.country_id;
     countryBId = data.country_b.country_id;
 
-    // Restore prior listen from server (total across session)
-    listenAMs  = data.country_a.listen_ms || 0;
-    listenBMs  = data.country_b.listen_ms || 0;
+    // Restore prior listen from server (total across session).
+    // If the user previously heard the full anthem (localStorage), credit
+    // them with full weight so they don't have to relisten.
+    listenAMs = hasHeardFull(countryAId)
+      ? Math.max(data.country_a.listen_ms || 0, FULL_LISTEN_MS)
+      : (data.country_a.listen_ms || 0);
+    listenBMs = hasHeardFull(countryBId)
+      ? Math.max(data.country_b.listen_ms || 0, FULL_LISTEN_MS)
+      : (data.country_b.listen_ms || 0);
 
     // Populate card A
     $('flag-a').src  = data.country_a.flag_url || '';
@@ -220,9 +291,14 @@
     $('elo-a').textContent    = data.country_a.elo_score || 1500;
     $('audio-a').src     = data.country_a.audio_url || '';
     $('audio-a').preload = 'metadata';
-    $('listen-timer-a').textContent = (listenAMs / 1000).toFixed(1);
     $('vote-a-btn').disabled  = false;
-    if (listenAMs > 0) show($('listen-indicator-a')); else hide($('listen-indicator-a'));
+    if (listenAMs > 0) {
+      show($('listen-indicator-a'));
+      $('listen-timer-a').textContent = (listenAMs / 1000).toFixed(1);
+      updateListenProgress('a', listenAMs);
+    } else {
+      hide($('listen-indicator-a'));
+    }
 
     // Populate card B
     $('flag-b').src  = data.country_b.flag_url || '';
@@ -232,9 +308,14 @@
     $('elo-b').textContent    = data.country_b.elo_score || 1500;
     $('audio-b').src     = data.country_b.audio_url || '';
     $('audio-b').preload = 'metadata';
-    $('listen-timer-b').textContent = (listenBMs / 1000).toFixed(1);
     $('vote-b-btn').disabled  = false;
-    if (listenBMs > 0) show($('listen-indicator-b')); else hide($('listen-indicator-b'));
+    if (listenBMs > 0) {
+      show($('listen-indicator-b'));
+      $('listen-timer-b').textContent = (listenBMs / 1000).toFixed(1);
+      updateListenProgress('b', listenBMs);
+    } else {
+      hide($('listen-indicator-b'));
+    }
 
     // Wildcard badge
     if (data.is_wildcard) show($('wildcard-badge')); else hide($('wildcard-badge'));

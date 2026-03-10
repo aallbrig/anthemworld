@@ -63,7 +63,10 @@
           <p id="anthem-a" class="text-muted small mb-2"></p>
           <audio id="audio-a" controls class="w-100 mb-2" preload="none"></audio>
           <div id="listen-indicator-a" class="text-muted small mb-2 d-none">
-            ⏱ <span id="listen-timer-a">0</span>s heard
+            <div class="progress mb-1" style="height:6px;" title="Listen progress toward full vote weight">
+              <div id="listen-bar-a" class="progress-bar" role="progressbar" style="width:0%"></div>
+            </div>
+            <span id="listen-status-a">⏱ <span id="listen-timer-a">0</span>s heard</span>
           </div>
           <div class="mt-2">
             <span class="badge bg-light text-dark border">ELO: <span id="elo-a">—</span></span>
@@ -95,7 +98,10 @@
           <p id="anthem-b" class="text-muted small mb-2"></p>
           <audio id="audio-b" controls class="w-100 mb-2" preload="none"></audio>
           <div id="listen-indicator-b" class="text-muted small mb-2 d-none">
-            ⏱ <span id="listen-timer-b">0</span>s heard
+            <div class="progress mb-1" style="height:6px;" title="Listen progress toward full vote weight">
+              <div id="listen-bar-b" class="progress-bar" role="progressbar" style="width:0%"></div>
+            </div>
+            <span id="listen-status-b">⏱ <span id="listen-timer-b">0</span>s heard</span>
           </div>
           <div class="mt-2">
             <span class="badge bg-light text-dark border">ELO: <span id="elo-b">—</span></span>
@@ -119,6 +125,17 @@
   <!-- Skip button -->
   <div id="skip-area" class="d-none text-center mt-3">
     <button class="btn btn-outline-secondary btn-sm" id="skip-btn">⏭ Skip this matchup</button>
+  </div>
+
+  <!-- Listen weight hint -->
+  <div id="weight-hint" class="d-none mt-4 mb-2">
+    <div class="card border-0 bg-light mx-auto" style="max-width:560px;">
+      <div class="card-body py-2 px-3 text-center small text-muted">
+        🎧 Listen to at least <strong>10 seconds</strong> of each anthem for your vote to carry
+        full weight. The more you listen, the more your opinion counts.
+        <div id="weight-live" class="mt-1 fw-semibold"></div>
+      </div>
+    </div>
   </div>
 
 </div>
