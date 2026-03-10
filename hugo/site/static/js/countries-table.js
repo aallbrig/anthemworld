@@ -9,7 +9,13 @@ document.addEventListener('DOMContentLoaded', function() {
 function initCountriesTable() {
     fetch('/data/anthems.json')
         .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
-        .then(data => renderTable(data))
+        .then(data => {
+            try {
+                renderTable(data);
+            } catch (renderErr) {
+                console.error('[countries-table] Render error:', renderErr);
+            }
+        })
         .catch(err => {
             console.warn('[countries-table] Failed to load anthem data:', err);
             renderTable(null);
@@ -73,7 +79,8 @@ function renderTable(data) {
             { title: "Audio",       orderable: false, render: (d, t, row) => {
                 if (!d) return '<span class="badge bg-secondary">None</span>';
                 const fmt = row[8] || 'ogg';
-                const mime = window.AudioController.mime(fmt);
+                const mime = window.AudioController?.mime?.(fmt)
+                    || (fmt === 'mp3' ? 'audio/mpeg' : fmt === 'wav' ? 'audio/wav' : 'audio/ogg');
                 return `<audio controls preload="none" style="height:28px;width:180px;">
                     <source src="${d}" type="${mime}">
                 </audio>`;
