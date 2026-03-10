@@ -137,7 +137,7 @@ function buildPopupContent(countryName, isoCode, countryRecord) {
             audioPlayerHTML = `
                 <div class="mt-2">
                     <audio controls style="width:100%;height:32px;" preload="none">
-                        <source src="${instrumental.url}" type="audio/${instrumental.format || 'ogg'}">
+                        <source src="${instrumental.url}" type="${window.AudioController.mime(instrumental.format)}">
                     </audio>
                 </div>`;
         }

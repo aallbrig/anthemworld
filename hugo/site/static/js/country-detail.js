@@ -102,7 +102,7 @@
     if (af) {
       const audio = document.getElementById('cd-audio');
       audio.src = af.url;
-      if (af.format) audio.setAttribute('type', af.format);
+      audio.setAttribute('type', window.AudioController.mime(af.format));
       audio.dataset.anthem = a.name || commonName;
       if (af.license) {
         setText('cd-audio-license', `License: ${af.license}`);

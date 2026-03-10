@@ -51,5 +51,23 @@ window.AudioController = (function () {
         registerAll(container) {
             container.querySelectorAll('audio').forEach(el => this.register(el));
         },
+
+        /**
+         * Normalize any stored format/MIME value to a valid audio MIME type.
+         * Wikimedia Commons returns "application/ogg" (not "audio/ogg"), and
+         * other values like "audio/wav" are already correct — so we must not
+         * blindly prepend "audio/".
+         * @param {string} fmt
+         * @returns {string}
+         */
+        mime(fmt) {
+            if (!fmt) return 'audio/ogg';
+            if (fmt === 'application/ogg' || fmt === 'ogg') return 'audio/ogg';
+            if (fmt.startsWith('audio/')) return fmt;
+            if (fmt === 'mp3' || fmt === 'mpeg') return 'audio/mpeg';
+            if (fmt === 'wav') return 'audio/wav';
+            if (fmt === 'flac') return 'audio/flac';
+            return 'audio/ogg';
+        },
     };
 })();

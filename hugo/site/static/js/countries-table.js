@@ -49,8 +49,8 @@ function renderTable(data) {
     }
 
     const noDataMsg = data
-        ? 'No anthem data found. Try: <code>worldanthem data download rest-countries-api wikidata-sparql && worldanthem data format --output hugo/site/static/data</code>'
-        : 'anthem data not found. Run <code>worldanthem data format --output hugo/site/static/data</code> to generate it.';
+        ? 'No anthem data found. Try: <code>anthemworld data download rest-countries-api wikidata-sparql && anthemworld data format --output hugo/site/static/data</code>'
+        : 'anthem data not found. Run <code>anthemworld data format --output hugo/site/static/data</code> to generate it.';
 
     const table = $('#countries-table').DataTable({
         data: rows,
@@ -73,7 +73,7 @@ function renderTable(data) {
             { title: "Audio",       orderable: false, render: (d, t, row) => {
                 if (!d) return '<span class="badge bg-secondary">None</span>';
                 const fmt = row[8] || 'ogg';
-                const mime = fmt.includes('mp3') ? 'audio/mpeg' : `audio/${fmt}`;
+                const mime = window.AudioController.mime(fmt);
                 return `<audio controls preload="none" style="height:28px;width:180px;">
                     <source src="${d}" type="${mime}">
                 </audio>`;
