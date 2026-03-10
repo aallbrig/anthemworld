@@ -313,8 +313,21 @@
     listenAMs = 0;
     listenBMs = 0;
     comboFired = false;
-    if (listenATimerA) clearInterval(listenATimerA);
-    if (listenBTimerB) clearInterval(listenBTimerB);
+    if (listenATimerA) { clearInterval(listenATimerA); listenATimerA = null; }
+    if (listenBTimerB) { clearInterval(listenBTimerB); listenBTimerB = null; }
+
+    // Stop audio and clear stale handlers so no onended fires for the old track
+    // after the new matchup has loaded (which would incorrectly write to localStorage
+    // or trigger updateListenProgress against the new country's IDs).
+    ['audio-a', 'audio-b'].forEach(id => {
+      const el = $(id);
+      if (!el) return;
+      el.pause();
+      el.onplay   = null;
+      el.onpause  = null;
+      el.onended  = null;
+    });
+
     // Clear juice classes from previous round
     [$('card-a'), $('card-b')].forEach(el => el?.classList.remove('aw-card-full'));
     [$('vote-a-btn'), $('vote-b-btn')].forEach(el => el?.classList.remove('aw-vote-powered'));
@@ -413,6 +426,12 @@
     $('vote-a-btn').disabled = true;
     $('vote-b-btn').disabled = true;
     hide(skipArea);
+
+    // Immediately stop audio so onended cannot fire during the post-vote delay
+    // and incorrectly mark the country as "heard in full" in localStorage.
+    if (listenATimerA) { clearInterval(listenATimerA); listenATimerA = null; }
+    if (listenBTimerB) { clearInterval(listenBTimerB); listenBTimerB = null; }
+    [$('audio-a'), $('audio-b')].forEach(el => { if (el) el.pause(); });
 
     const { ok, status, body } = await apiFetch('/vote', {
       method: 'POST',
