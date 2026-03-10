@@ -68,4 +68,4 @@ function updateElo(
     };
 }
 
-module.exports = { INITIAL_ELO, FULL_LISTEN_MS, FULL_ANTHEM_BONUS, updateElo };
+module.exports = { INITIAL_ELO, FULL_LISTEN_MS, FULL_ANTHEM_BONUS, listenWeight, updateElo };

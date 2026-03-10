@@ -12,7 +12,6 @@ window.AudioController = (function () {
         play(el) {
             if (current && current !== el) {
                 current.pause();
-                current.currentTime = 0;
             }
             current = el;
             el.play().catch(() => {}); // ignore NotAllowedError on autoplay
@@ -24,7 +23,6 @@ window.AudioController = (function () {
         stopAll() {
             if (current) {
                 current.pause();
-                current.currentTime = 0;
                 current = null;
             }
         },
