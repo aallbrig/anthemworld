@@ -11,6 +11,11 @@
 
 const { test, expect } = require('@playwright/test');
 
+// Maximum time (ms) for a page's load event to fire
+const PAGE_LOAD_TIMEOUT_MS = 5000;
+// Time (ms) to settle after load — allows async fetches (DataTable init, JSON loads) to complete
+const ASYNC_SETTLE_MS = 1000;
+
 const IGNORE_STRINGS = [
   'ERR_CONNECTION_REFUSED',
   'NS_ERROR_CONNECTION_REFUSED',
@@ -53,9 +58,13 @@ for (const { path, name } of PAGES) {
         }
       });
 
-      await page.goto(path, { waitUntil: 'load' });
+      const t0 = Date.now();
+      await page.goto(path, { waitUntil: 'load', timeout: PAGE_LOAD_TIMEOUT_MS });
+      const loadMs = Date.now() - t0;
+      expect(loadMs, `Page load exceeded ${PAGE_LOAD_TIMEOUT_MS}ms`).toBeLessThan(PAGE_LOAD_TIMEOUT_MS);
+
       // Allow async JS (data fetches, DataTable init) to complete
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(ASYNC_SETTLE_MS);
 
       expect(errors, `Console errors on ${path}:\n${errors.join('\n')}`).toHaveLength(0);
     });
@@ -81,8 +90,8 @@ for (const { path, name } of PAGES) {
         failed.push(`FAILED ${req.url()}: ${err}`);
       });
 
-      await page.goto(path, { waitUntil: 'load' });
-      await page.waitForTimeout(500);
+      await page.goto(path, { waitUntil: 'load', timeout: PAGE_LOAD_TIMEOUT_MS });
+      await page.waitForTimeout(ASYNC_SETTLE_MS);
 
       expect(failed, `Failed resources on ${path}:\n${failed.join('\n')}`).toHaveLength(0);
     });
