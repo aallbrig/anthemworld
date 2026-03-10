@@ -34,7 +34,7 @@ Anthem World is a web application that displays an interactive world map with 19
 
 ## Project Structure
 - `/hugo/site/` - Hugo static site
-- `/cli/worldanthem/` - Go CLI application
+- `/cli/anthemworld/` - Go CLI application
 - `/data/schema/` - Database schema files
 - `/tests/playwright/` - Playwright tests
 - `/docs/` - Documentation and research
@@ -53,7 +53,8 @@ Anthem World is a web application that displays an interactive world map with 19
 
 ## Common Tasks
 - **Run Hugo dev server**: `cd hugo/site && hugo server -D`
-- **Build CLI**: `cd cli/worldanthem && go build`
+- **Build CLI**: `cd cli/anthemworld && go build`
+- **Install CLI system-wide**: `make install` from repo root — always run this after any CLI change so `anthemworld` on PATH is current
 - **Run tests**: `cd tests/playwright && npm test`
 - **Format code**: `gofmt -w .` (Go), `prettier --write .` (JS/HTML)
 

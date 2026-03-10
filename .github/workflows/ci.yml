@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: cli/worldanthem
+        working-directory: cli/anthemworld
     env:
       GOWORK: off
     steps:
@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          cache-dependency-path: cli/worldanthem/go.sum
+          cache-dependency-path: cli/anthemworld/go.sum
 
       - name: Download modules
         run: go mod download

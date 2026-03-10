@@ -7,8 +7,8 @@ LDFLAGS    := -ldflags "\
 	-X $(PKG).gitCommit=$(GIT_COMMIT) \
 	-X $(PKG).buildDate=$(BUILD_DATE)"
 
-BINARY     := worldanthem
-CLI_DIR    := cli/worldanthem
+BINARY     := anthemworld
+CLI_DIR    := cli/anthemworld
 INSTALL_DIR := $(HOME)/bin
 
 .PHONY: build install clean dev game-install game-up game-down game-init game-start game-dev dev-reset

@@ -5,7 +5,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "worldanthem",
+	Use:   "anthemworld",
 	Short: "Anthem World CLI - Manage national anthem data",
 	Long: `World Anthem CLI is a command-line tool for discovering, downloading,
 and managing data about national anthems from around the world.

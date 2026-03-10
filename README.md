@@ -37,14 +37,14 @@ An interactive web application showcasing the national anthems of all 193 UN-rec
 
 2. Build the CLI from repository root:
    ```bash
-   go build -o bin/worldanthem ./cli/worldanthem
+   go build -o bin/anthemworld ./cli/anthemworld
    ```
 
 3. Run commands:
    ```bash
-   ./bin/worldanthem --help
-   ./bin/worldanthem status
-   ./bin/worldanthem data discover
+   ./bin/anthemworld --help
+   ./bin/anthemworld status
+   ./bin/anthemworld data discover
    ```
 
 ## Project Structure
@@ -58,7 +58,7 @@ anthemworld/
 │   ├── layouts/          # Hugo templates
 │   ├── static/           # Static assets (CSS, JS, images)
 │   └── data/             # Data files
-├── cli/worldanthem/      # Go CLI application
+├── cli/anthemworld/      # Go CLI application
 │   ├── cmd/              # CLI commands
 │   ├── pkg/              # Packages (db, jobs, sources)
 │   └── main.go           # Entry point
@@ -72,28 +72,28 @@ anthemworld/
 ### Status Commands
 ```bash
 # Overall status
-worldanthem status
+anthemworld status
 
 # Data status
-worldanthem data status
+anthemworld data status
 
 # Jobs status
-worldanthem jobs status
+anthemworld jobs status
 ```
 
 ### Data Management
 ```bash
 # Discover data sources
-worldanthem data discover
+anthemworld data discover
 
 # Check data source health
-worldanthem data sources
+anthemworld data sources
 
 # Download data (TODO)
-worldanthem data download
+anthemworld data download
 
 # Format data to JSON
-worldanthem data format --output ./output --format json
+anthemworld data format --output ./output --format json
 ```
 
 ### Database
@@ -116,7 +116,7 @@ From repository root:
 
 ```bash
 # CLI tests
-go test ./cli/worldanthem/... -v
+go test ./cli/anthemworld/... -v
 
 # Playwright tests
 cd tests/playwright

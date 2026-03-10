@@ -16,7 +16,7 @@ AWS="aws --endpoint-url=$ENDPOINT --region=$REGION"
 
 if [[ ! -f "$ANTHEMS" ]]; then
   echo "Error: anthems.json not found at $ANTHEMS"
-  echo "Run: worldanthem data format --output hugo/site/static/data"
+  echo "Run: anthemworld data format --output hugo/site/static/data"
   exit 1
 fi
 

@@ -20,6 +20,6 @@ func buildVersionString() string {
 	if len(short) > 7 {
 		short = short[:7]
 	}
-	return fmt.Sprintf("worldanthem %s (%s)\n  commit:  %s\n  built:   %s\n  go:      %s",
+	return fmt.Sprintf("anthemworld %s (%s)\n  commit:  %s\n  built:   %s\n  go:      %s",
 		version, short, gitCommit, buildDate, runtime.Version())
 }

@@ -250,7 +250,7 @@ var dataFormatCmd = &cobra.Command{
 var dataDownloadCmd = &cobra.Command{
 	Use:   "download [source-id...]",
 	Short: "Download data from sources",
-	Long:  `Download data from all or specified data sources. Pass source IDs to download only those sources (e.g. "worldanthem data download wikimedia-commons factbook-json").`,
+	Long:  `Download data from all or specified data sources. Pass source IDs to download only those sources (e.g. "anthemworld data download wikimedia-commons factbook-json").`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		database, err := db.GetDB()
 		if err != nil {
@@ -346,8 +346,8 @@ var dataDownloadCmd = &cobra.Command{
 			fmt.Printf("✗ Failed: %d sources\n", failCount)
 		}
 		fmt.Printf("\nNext steps:")
-		fmt.Printf("\n  1. Check status: worldanthem data sources")
-		fmt.Printf("\n  2. Export data: worldanthem data format --output hugo/site/static/data\n")
+		fmt.Printf("\n  1. Check status: anthemworld data sources")
+		fmt.Printf("\n  2. Export data: anthemworld data format --output hugo/site/static/data\n")
 
 		return nil
 	},
