@@ -9,13 +9,9 @@
   const container = document.getElementById('home-top3');
   if (!container) return;
 
-  // API base: use data-api-base attribute if set (production), otherwise fall back to
-  // localhost:3001 only when running a local dev server. Empty string = no API configured.
-  const API = container.dataset.apiBase != null
-    ? container.dataset.apiBase
-    : (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-      ? 'http://localhost:3001'
-      : '';
+  // API base must be set explicitly via data-api-base attribute on the container.
+  // This prevents spurious fetches in CI (Hugo runs on localhost but the game API doesn't).
+  const API = container.dataset.apiBase || '';
 
   const FALLBACK = '<p class="text-muted small">No votes yet — <a href="/game/">be the first to vote!</a></p>';
 

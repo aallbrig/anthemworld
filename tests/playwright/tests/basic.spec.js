@@ -8,6 +8,8 @@ test.describe('Basic Site Tests', () => {
         const text = msg.text();
         // Ignore connection-refused errors from optional services (game API, external audio CDN)
         if (text.includes('ERR_CONNECTION_REFUSED') || text.includes('NS_ERROR_CONNECTION_REFUSED')) return;
+        // Ignore CORS errors from optional game API (not running in CI)
+        if (text.includes('localhost:3001')) return;
         consoleErrors.push(text);
       }
     });

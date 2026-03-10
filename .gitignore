@@ -7,6 +7,8 @@ bin/
 hugo/site/public/
 # local sam env overrides
 sam/game/env.local.json
+# Local Hugo dev config override
+hugo/site/config.local.toml
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #

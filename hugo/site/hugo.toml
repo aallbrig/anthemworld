@@ -5,6 +5,9 @@ title = 'Anthem World - National Anthems of the World'
 [params]
   description = "Explore the national anthems of all 193 UN-recognized countries through an interactive world map"
   author = "Anthem World"
+  # Game API base URL — empty disables the Top 3 widget fetch.
+  # Set to "http://localhost:3001" in config.local.toml for local SAM dev.
+  gameApiBase = ""
 
 [markup]
   [markup.goldmark]

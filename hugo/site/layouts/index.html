@@ -5,5 +5,12 @@
 {{ end }}
 
 {{ define "scripts" }}
+<script>
+  // Inject game API base from Hugo config so home-stats.js can read it
+  (function() {
+    var el = document.getElementById('home-top3');
+    if (el) el.dataset.apiBase = {{ site.Params.gameApiBase | jsonify }};
+  }());
+</script>
 <script src="/js/home-stats.js"></script>
 {{ end }}
