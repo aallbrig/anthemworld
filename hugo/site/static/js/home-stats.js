@@ -1,29 +1,40 @@
 /**
  * home-stats.js — populates the Top 3 anthems widget on the homepage.
  * Fetches /leaderboard?limit=3 from the game API if available;
- * silently hides the section if the API is unreachable.
+ * shows a friendly fallback if the API is unreachable or not configured.
  */
 (function () {
   'use strict';
 
-  const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-  const API = isLocal ? 'http://localhost:3001' : '';
-
   const container = document.getElementById('home-top3');
   if (!container) return;
+
+  // API base: use data-api-base attribute if set (production), otherwise fall back to
+  // localhost:3001 only when running a local dev server. Empty string = no API configured.
+  const API = container.dataset.apiBase != null
+    ? container.dataset.apiBase
+    : (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? 'http://localhost:3001'
+      : '';
+
+  const FALLBACK = '<p class="text-muted small">No votes yet — <a href="/game/">be the first to vote!</a></p>';
 
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
   async function load() {
+    if (!API) {
+      container.innerHTML = FALLBACK;
+      return;
+    }
     try {
       const res = await fetch(`${API}/leaderboard?limit=3`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const top = (data.countries || []).slice(0, 3);
       if (!top.length) {
-        container.innerHTML = '<p class="text-muted small">No votes yet — <a href="/game/">be the first to vote!</a></p>';
+        container.innerHTML = FALLBACK;
         return;
       }
       const medals = ['🥇', '🥈', '🥉'];
@@ -40,9 +51,7 @@
         </div>`;
       }).join('');
     } catch {
-      // API not available (local dev without SAM running) — hide the section gracefully
-      const section = container.closest('.col-md-5');
-      if (section) section.style.display = 'none';
+      container.innerHTML = FALLBACK;
     }
   }
 

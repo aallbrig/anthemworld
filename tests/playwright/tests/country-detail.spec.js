@@ -29,8 +29,8 @@ test.describe('Country detail pages', () => {
   });
 
   test('country without audio shows fallback message', async ({ page }) => {
-    // Switzerland (CHE) has no Wikimedia audio in our dataset
-    await page.goto('/countries/che/');
+    // Bosnia and Herzegovina (BIH) has no Wikimedia audio in our dataset
+    await page.goto('/countries/bih/');
     await expect(page.locator('text=Audio recording not yet available')).toBeVisible();
     await expect(page.locator('audio')).not.toBeVisible();
   });
