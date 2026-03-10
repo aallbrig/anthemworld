@@ -23,6 +23,14 @@
   function hasHeardFull(countryId) {
     try { return localStorage.getItem(`aw_heard_full:${countryId}`) === '1'; } catch (_) { return false; }
   }
+  // Tracks which anthems the user has listened to in their entirety (full play).
+  // Separate from aw_heard_full (10 s) — this requires reaching the end.
+  function markHeardAnthem(countryId) {
+    try { localStorage.setItem(`aw_heard_anthem:${countryId}`, '1'); } catch (_) {}
+  }
+  function hasHeardAnthem(countryId) {
+    try { return localStorage.getItem(`aw_heard_anthem:${countryId}`) === '1'; } catch (_) { return false; }
+  }
 
   // ─── State ─────────────────────────────────────────────────────────────────
   let sessionId   = null;
@@ -35,6 +43,11 @@
   let listenBTimerB = null;
   let nextMatchupTimer = null; // setTimeout handle for post-vote auto-advance
   let voteCount   = 0;
+  // Full-anthem bonus tracking (furthest playback position reached this matchup)
+  let maxPositionAMs = 0;
+  let maxPositionBMs = 0;
+  let heardAnthemA   = false; // user heard full anthem for side A this matchup
+  let heardAnthemB   = false;
 
   // ─── Maps ──────────────────────────────────────────────────────────────────
   let mapA = null;
@@ -106,8 +119,6 @@
   function startListenTimer(side) {
     const audioEl    = $(side === 'a' ? 'audio-a' : 'audio-b');
     const timerEl    = $(side === 'a' ? 'listen-timer-a' : 'listen-timer-b');
-    const barEl      = $(side === 'a' ? 'listen-bar-a' : 'listen-bar-b');
-    const statusEl   = $(side === 'a' ? 'listen-status-a' : 'listen-status-b');
     const indicatorEl = $(side === 'a' ? 'listen-indicator-a' : 'listen-indicator-b');
     const countryId  = side === 'a' ? countryAId : countryBId;
     const startMs    = Date.now();
@@ -118,11 +129,9 @@
     const interval = setInterval(() => {
       const elapsed = Date.now() - startMs;
       const total   = priorMs + elapsed;
-      timerEl.textContent = (total / 1000).toFixed(1);
-
+      if (timerEl) timerEl.textContent = (total / 1000).toFixed(1);
       if (side === 'a') { listenAMs = total; }
       else              { listenBMs = total; }
-
       updateListenProgress(side, total);
     }, 100);
 
@@ -132,8 +141,21 @@
       audioEl.onpause = () => clearInterval(listenATimerA);
       audioEl.onended = () => {
         clearInterval(listenATimerA);
+        // Short-anthem edge case: anthem shorter than FULL_LISTEN_MS → credit full weight
+        if (audioEl.duration && isFinite(audioEl.duration) &&
+            audioEl.duration * 1000 < FULL_LISTEN_MS) {
+          listenAMs = FULL_LISTEN_MS;
+        }
         markHeardFull(countryId);
-        updateListenProgress(side, side === 'a' ? listenAMs : listenBMs);
+        updateListenProgress('a', listenAMs);
+        // Award full-anthem bonus on natural end (client-side)
+        if (!heardAnthemA) {
+          heardAnthemA = true;
+          markHeardAnthem(countryId);
+          // Only trigger juice if the anthem bar is visible (first bar complete)
+          const ind = $('anthem-indicator-a');
+          if (ind && !ind.classList.contains('d-none')) triggerAnthemJuice('a');
+        }
       };
     } else {
       if (listenBTimerB) clearInterval(listenBTimerB);
@@ -141,8 +163,18 @@
       audioEl.onpause = () => clearInterval(listenBTimerB);
       audioEl.onended = () => {
         clearInterval(listenBTimerB);
+        if (audioEl.duration && isFinite(audioEl.duration) &&
+            audioEl.duration * 1000 < FULL_LISTEN_MS) {
+          listenBMs = FULL_LISTEN_MS;
+        }
         markHeardFull(countryId);
-        updateListenProgress(side, side === 'a' ? listenAMs : listenBMs);
+        updateListenProgress('b', listenBMs);
+        if (!heardAnthemB) {
+          heardAnthemB = true;
+          markHeardAnthem(countryId);
+          const ind = $('anthem-indicator-b');
+          if (ind && !ind.classList.contains('d-none')) triggerAnthemJuice('b');
+        }
       };
     }
   }
@@ -162,10 +194,7 @@
 
     if (full) {
       statusEl.innerHTML = '✅ Full weight achieved!';
-      // Animate the checkmark text in — only on first time reaching full
-      if (!wasAlreadyFull) {
-        triggerCardJuice(side);
-      }
+      if (!wasAlreadyFull) triggerCardJuice(side);
     } else {
       statusEl.innerHTML = `⏱ <span id="listen-timer-${side}">${(totalMs / 1000).toFixed(1)}</span>s heard`;
     }
@@ -173,17 +202,55 @@
     updateWeightHint();
   }
 
+  // Updates the orange anthem bonus bar (position-based, not time-based).
+  function updateAnthemProgress(side, posMs, durationMs) {
+    const barEl    = $(`anthem-bar-${side}`);
+    const pctEl    = $(`anthem-pct-${side}`);
+    if (!barEl || !durationMs) return;
+    const pct = Math.min(100, (posMs / durationMs) * 100);
+    barEl.style.width = pct + '%';
+    if (pctEl) pctEl.textContent = Math.round(pct);
+  }
+
   const reducedMotion = () =>
     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Reveals the anthem bonus bar and optionally shows it at full if already heard.
+  function revealAnthemBar(side) {
+    const ind = $(`anthem-indicator-${side}`);
+    if (!ind || !ind.classList.contains('d-none')) return;
+    ind.classList.remove('d-none');
+    if (!reducedMotion()) {
+      ind.classList.add('aw-anthem-appear');
+      ind.addEventListener('animationend', () =>
+        ind.classList.remove('aw-anthem-appear'), { once: true });
+    }
+    const alreadyFull = side === 'a' ? heardAnthemA : heardAnthemB;
+    if (alreadyFull) {
+      // Previously heard in full — show immediately at 100% with juice
+      triggerAnthemJuice(side);
+    } else {
+      // Show current progress (user may have already scrubbed)
+      const audioEl = $(side === 'a' ? 'audio-a' : 'audio-b');
+      const posMs = side === 'a' ? maxPositionAMs : maxPositionBMs;
+      if (audioEl && audioEl.duration && isFinite(audioEl.duration)) {
+        updateAnthemProgress(side, posMs, audioEl.duration * 1000);
+      }
+    }
+  }
+
   function triggerCardJuice(side) {
+    // Reveal the anthem bonus bar whenever first bar completes
+    revealAnthemBar(side);
+
     if (reducedMotion()) return;
 
-    // Spring-bounce the status text
+    // Spring-bounce the status text (faster than default)
     const statusEl = $(`listen-status-${side}`);
-    statusEl.classList.add('animate__animated', 'animate__bounceIn');
+    statusEl.classList.add('animate__animated', 'animate__faster', 'animate__bounceIn');
     statusEl.addEventListener('animationend', () =>
-      statusEl.classList.remove('animate__animated', 'animate__bounceIn'), { once: true });
+      statusEl.classList.remove('animate__animated', 'animate__faster', 'animate__bounceIn'),
+      { once: true });
 
     // Pulse the card border green
     const cardEl = $(side === 'a' ? 'card-a' : 'card-b');
@@ -194,6 +261,43 @@
     // If both are now full, fire the combo
     if (listenAMs >= FULL_LISTEN_MS && listenBMs >= FULL_LISTEN_MS) {
       triggerComboJuice();
+    }
+  }
+
+  function triggerAnthemJuice(side) {
+    const barEl    = $(`anthem-bar-${side}`);
+    const statusEl = $(`anthem-status-${side}`);
+    const cardEl   = $(side === 'a' ? 'card-a' : 'card-b');
+
+    if (barEl) {
+      barEl.style.width = '100%';
+      barEl.classList.remove('bg-warning');
+      barEl.classList.add('aw-anthem-shimmer');
+    }
+    if (statusEl) {
+      statusEl.innerHTML = '🏅 Full anthem heard! Bonus ELO applied.';
+      statusEl.className = 'text-warning fw-semibold small';
+      if (!reducedMotion()) {
+        statusEl.classList.add('animate__animated', 'animate__tada');
+        statusEl.addEventListener('animationend', () =>
+          statusEl.classList.remove('animate__animated', 'animate__tada'), { once: true });
+      }
+    }
+    if (cardEl) {
+      cardEl.classList.add('aw-card-anthem');
+      if (!reducedMotion()) {
+        cardEl.classList.add('animate__animated', 'animate__heartBeat');
+        cardEl.addEventListener('animationend', () =>
+          cardEl.classList.remove('animate__animated', 'animate__heartBeat'), { once: true });
+      }
+    }
+    if (typeof confetti === 'function' && !reducedMotion()) {
+      confetti({
+        particleCount: 40,
+        spread: 55,
+        origin: { y: 0.55, x: side === 'a' ? 0.25 : 0.75 },
+        colors: ['#ffc107', '#ff9800', '#ffe066', '#fd7e14'],
+      });
     }
   }
 
@@ -264,6 +368,46 @@
     audioEl.onplay = () => {
       startListenTimer(side);
     };
+
+    // Track furthest playback position for the anthem bonus bar.
+    // Uses ontimeupdate (fires during play and on seek) so scrubbing back
+    // doesn't reset progress, but re-listening the same section doesn't
+    // inflate the position counter.
+    audioEl.ontimeupdate = () => {
+      if (!audioEl.duration || !isFinite(audioEl.duration)) return;
+      const posMs = audioEl.currentTime * 1000;
+      const durMs = audioEl.duration * 1000;
+      if (side === 'a') {
+        if (posMs > maxPositionAMs) {
+          maxPositionAMs = posMs;
+          const ind = $('anthem-indicator-a');
+          if (ind && !ind.classList.contains('d-none')) {
+            updateAnthemProgress('a', maxPositionAMs, durMs);
+          }
+        }
+        // Award full-anthem if user reached 99% (handles scrub-to-end)
+        if (!heardAnthemA && maxPositionAMs >= durMs * 0.99) {
+          heardAnthemA = true;
+          markHeardAnthem(countryAId);
+          const ind = $('anthem-indicator-a');
+          if (ind && !ind.classList.contains('d-none')) triggerAnthemJuice('a');
+        }
+      } else {
+        if (posMs > maxPositionBMs) {
+          maxPositionBMs = posMs;
+          const ind = $('anthem-indicator-b');
+          if (ind && !ind.classList.contains('d-none')) {
+            updateAnthemProgress('b', maxPositionBMs, durMs);
+          }
+        }
+        if (!heardAnthemB && maxPositionBMs >= durMs * 0.99) {
+          heardAnthemB = true;
+          markHeardAnthem(countryBId);
+          const ind = $('anthem-indicator-b');
+          if (ind && !ind.classList.contains('d-none')) triggerAnthemJuice('b');
+        }
+      }
+    };
   }
 
   // ─── Session ───────────────────────────────────────────────────────────────
@@ -313,6 +457,10 @@
     listenAMs = 0;
     listenBMs = 0;
     comboFired = false;
+    maxPositionAMs = 0;
+    maxPositionBMs = 0;
+    heardAnthemA   = false;
+    heardAnthemB   = false;
     if (listenATimerA) { clearInterval(listenATimerA); listenATimerA = null; }
     if (listenBTimerB) { clearInterval(listenBTimerB); listenBTimerB = null; }
 
@@ -323,15 +471,18 @@
       const el = $(id);
       if (!el) return;
       el.pause();
-      el.onplay   = null;
-      el.onpause  = null;
-      el.onended  = null;
+      el.onplay       = null;
+      el.onpause      = null;
+      el.onended      = null;
+      el.ontimeupdate = null;
     });
 
     // Clear juice classes from previous round
-    [$('card-a'), $('card-b')].forEach(el => el?.classList.remove('aw-card-full'));
+    [$('card-a'), $('card-b')].forEach(el => el?.classList.remove('aw-card-full', 'aw-card-anthem'));
     [$('vote-a-btn'), $('vote-b-btn')].forEach(el => el?.classList.remove('aw-vote-powered'));
     [$('listen-bar-a'), $('listen-bar-b')].forEach(el => el?.classList.remove('aw-bar-shimmer'));
+    [$('anthem-bar-a'), $('anthem-bar-b')].forEach(el => el?.classList.remove('aw-anthem-shimmer'));
+    [$('anthem-indicator-a'), $('anthem-indicator-b')].forEach(el => { if (el) el.classList.add('d-none'); });
 
     const { ok, status, body } = await apiFetch(`/matchup?session_id=${sessionId}`);
 
@@ -368,6 +519,13 @@
     listenBMs = hasHeardFull(countryBId)
       ? Math.max(data.country_b.listen_ms || 0, FULL_LISTEN_MS)
       : (data.country_b.listen_ms || 0);
+
+    // Credit full-anthem localStorage for the bonus bar.
+    // revealAnthemBar is called from triggerCardJuice (which fires when first
+    // bar hits 100%); if the country was previously heard in full, the anthem
+    // bar will show at 100% with juice at that point.
+    heardAnthemA = hasHeardAnthem(countryAId);
+    heardAnthemB = hasHeardAnthem(countryBId);
 
     // Populate card A
     $('flag-a').src  = data.country_a.flag_url || '';
@@ -436,12 +594,14 @@
     const { ok, status, body } = await apiFetch('/vote', {
       method: 'POST',
       body: JSON.stringify({
-        session_id:  sessionId,
-        matchup_id:  matchupId,
-        winner_id:   winnerId,
-        loser_id:    loserId,
-        listen_a_ms: Math.round(listenAMs),
-        listen_b_ms: Math.round(listenBMs),
+        session_id:    sessionId,
+        matchup_id:    matchupId,
+        winner_id:     winnerId,
+        loser_id:      loserId,
+        listen_a_ms:   Math.round(listenAMs),
+        listen_b_ms:   Math.round(listenBMs),
+        full_anthem_a: heardAnthemA,
+        full_anthem_b: heardAnthemB,
       }),
     });
 
@@ -460,7 +620,10 @@
     const winnerName = winnerId === countryAId ? $('name-a').textContent : $('name-b').textContent;
     const eloChange  = body.winner.new_elo - body.winner.old_elo;
     const weightPct  = Math.round((body.vote_weight || 0) * 100);
-    const weightNote = weightPct < 100 ? ` <small class="text-muted">(${weightPct}% weight — listen longer for full impact)</small>` : '';
+    const anthemBonus = body.anthem_bonus ? ' 🏅' : '';
+    const weightNote = weightPct < 100
+      ? ` <small class="text-muted">(${weightPct}% weight — listen longer for full impact)</small>`
+      : anthemBonus ? ' <small class="text-warning">🏅 full anthem bonus applied!</small>' : '';
     showFlash('success',
       `✅ Voted for <strong>${winnerName}</strong>! ELO: ${body.winner.old_elo} → ${body.winner.new_elo} (+${eloChange})${weightNote}`
     );

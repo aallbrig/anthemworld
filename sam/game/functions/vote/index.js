@@ -45,7 +45,8 @@ exports.handler = async (event) => {
         return badRequest('Invalid JSON body');
     }
 
-    const { session_id, matchup_id, winner_id, loser_id, listen_a_ms, listen_b_ms } = body;
+    const { session_id, matchup_id, winner_id, loser_id, listen_a_ms, listen_b_ms,
+            full_anthem_a, full_anthem_b } = body;
 
     if (!session_id)  return badRequest('session_id is required');
     if (!matchup_id)  return badRequest('matchup_id is required');
@@ -110,7 +111,12 @@ exports.handler = async (event) => {
 
         const winnerElo = winnerRankRes.Item?.elo_score ?? INITIAL_ELO;
         const loserElo  = loserRankRes.Item?.elo_score  ?? INITIAL_ELO;
-        const { winner: newWinnerElo, loser: newLoserElo, vote_weight } = updateElo(winnerElo, loserElo, totalListenWinner, totalListenLoser);
+        // Determine full-anthem flags for winner/loser
+        const fullAnthemWinner = winner_id === country_a ? !!full_anthem_a : !!full_anthem_b;
+        const fullAnthemLoser  = loser_id  === country_a ? !!full_anthem_a : !!full_anthem_b;
+
+        const { winner: newWinnerElo, loser: newLoserElo, vote_weight, anthem_bonus } =
+            updateElo(winnerElo, loserElo, totalListenWinner, totalListenLoser, fullAnthemWinner, fullAnthemLoser);
 
         const voteId  = uuidv4();
         const votedAt = new Date().toISOString();
@@ -165,8 +171,9 @@ exports.handler = async (event) => {
         ]);
 
         return ok({
-            vote_id:     voteId,
+            vote_id:      voteId,
             vote_weight,
+            anthem_bonus: !!anthem_bonus,
             winner: { country_id: winner_id, old_elo: winnerElo, new_elo: newWinnerElo },
             loser:  { country_id: loser_id,  old_elo: loserElo,  new_elo: newLoserElo },
         });

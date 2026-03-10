@@ -6,12 +6,17 @@
 <!-- canvas-confetti — pointer-events:none canvas, safe to use over vote buttons -->
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <style>
-  /* ── Full-weight card glow ─────────────────────────────────────────── */
+  /* ── Full-weight card glow (green) ────────────────────────────────── */
   .aw-card-full {
     box-shadow: 0 0 0 3px #28a745, 0 4px 16px rgba(40,167,69,.35) !important;
     transition: box-shadow .4s ease;
   }
-  /* ── Shimmer sweep on full progress bar ────────────────────────────── */
+  /* ── Gold card glow (full anthem) ─────────────────────────────────── */
+  .aw-card-anthem {
+    box-shadow: 0 0 0 3px #ffc107, 0 4px 20px rgba(255,193,7,.45) !important;
+    transition: box-shadow .4s ease;
+  }
+  /* ── Shimmer on green listen bar ──────────────────────────────────── */
   @keyframes aw-shimmer {
     0%   { background-position: -200% center; }
     100% { background-position:  200% center; }
@@ -21,6 +26,25 @@
       #28a745 40%, #6ee78b 50%, #28a745 60%);
     background-size: 200% auto;
     animation: aw-shimmer 1.6s linear infinite;
+  }
+  /* ── Shimmer on gold anthem bar ───────────────────────────────────── */
+  @keyframes aw-anthem-shimmer {
+    0%   { background-position: -200% center; }
+    100% { background-position:  200% center; }
+  }
+  .aw-anthem-shimmer {
+    background: linear-gradient(90deg,
+      #ffc107 40%, #ffe580 50%, #ffc107 60%) !important;
+    background-size: 200% auto;
+    animation: aw-anthem-shimmer 1.6s linear infinite;
+  }
+  /* ── Slide-in when anthem bar is first revealed ───────────────────── */
+  @keyframes aw-anthem-appear {
+    from { opacity: 0; transform: translateY(-5px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .aw-anthem-appear {
+    animation: aw-anthem-appear 0.35s ease forwards;
   }
   /* ── Powered-up vote buttons ───────────────────────────────────────── */
   .aw-vote-powered {
@@ -40,7 +64,7 @@
   }
   /* Respect reduced-motion preference */
   @media (prefers-reduced-motion: reduce) {
-    .aw-bar-shimmer   { animation: none; }
+    .aw-bar-shimmer, .aw-anthem-shimmer, .aw-anthem-appear { animation: none; }
     .aw-hint-gold     { animation: none; }
     .animate__animated { animation: none !important; }
   }
@@ -72,7 +96,8 @@
     <div class="card card-body mx-auto text-start" style="max-width:640px">
       <h6 class="fw-bold mb-2">How Anthem Battle works</h6>
       <ul class="mb-2 small">
-        <li><strong>Listen first:</strong> You must listen to each anthem for at least 3 seconds before your vote counts.</li>
+        <li><strong>Listen first:</strong> Listen to each anthem for at least <strong>10 seconds</strong> for your vote to carry full weight. The more you listen, the stronger your vote.</li>
+        <li><strong>Full anthem bonus:</strong> A second orange bar appears once you hit 10 s. Listen to the <em>entire</em> anthem for a bonus ELO multiplier (up to +50% combined when both are fully heard). Totally optional — the bonus is yours if you want it.</li>
         <li><strong>Vote:</strong> Click "Vote for this anthem" to declare a winner. The other anthem gets a loss.</li>
         <li><strong>ELO ratings:</strong> Wins and losses update each country's ELO score (starting at 1500, K=32). A win against a higher-rated country earns more points.</li>
         <li><strong>Wildcard:</strong> Occasionally a lower-ranked anthem is matched against a higher-ranked one — upsets are worth more.</li>
@@ -114,6 +139,13 @@
               <div id="listen-bar-a" class="progress-bar" role="progressbar" style="width:0%"></div>
             </div>
             <span id="listen-status-a">⏱ <span id="listen-timer-a">0</span>s heard</span>
+            <!-- Bonus bar: hidden until first bar (10 s) completes -->
+            <div id="anthem-indicator-a" class="d-none mt-1">
+              <div class="progress mb-1" style="height:4px;" title="Bonus: listen to the full anthem for extra ELO weight">
+                <div id="anthem-bar-a" class="progress-bar bg-warning" role="progressbar" style="width:0%"></div>
+              </div>
+              <span id="anthem-status-a" class="text-warning small">🎵 <span id="anthem-pct-a">0</span>% — bonus ELO if you hear the whole anthem!</span>
+            </div>
           </div>
           <div class="mt-2">
             <span class="badge bg-light text-dark border">ELO: <span id="elo-a">—</span></span>
@@ -149,6 +181,13 @@
               <div id="listen-bar-b" class="progress-bar" role="progressbar" style="width:0%"></div>
             </div>
             <span id="listen-status-b">⏱ <span id="listen-timer-b">0</span>s heard</span>
+            <!-- Bonus bar: hidden until first bar (10 s) completes -->
+            <div id="anthem-indicator-b" class="d-none mt-1">
+              <div class="progress mb-1" style="height:4px;" title="Bonus: listen to the full anthem for extra ELO weight">
+                <div id="anthem-bar-b" class="progress-bar bg-warning" role="progressbar" style="width:0%"></div>
+              </div>
+              <span id="anthem-status-b" class="text-warning small">🎵 <span id="anthem-pct-b">0</span>% — bonus ELO if you hear the whole anthem!</span>
+            </div>
           </div>
           <div class="mt-2">
             <span class="badge bg-light text-dark border">ELO: <span id="elo-b">—</span></span>

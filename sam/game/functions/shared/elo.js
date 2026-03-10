@@ -12,6 +12,13 @@ const INITIAL_ELO = 1500;
 const FULL_LISTEN_MS = 10_000;
 
 /**
+ * Fractional bonus applied when a user listened to the entire anthem.
+ * Each full-anthem flag can boost the combined weight by this fraction.
+ * Max combined weight is capped at 1.5 (both anthems heard in full = +50%).
+ */
+const FULL_ANTHEM_BONUS = 0.25;
+
+/**
  * Expected score for player A given ratings.
  */
 function expectedScore(ratingA, ratingB) {
@@ -29,24 +36,36 @@ function listenWeight(totalListenMs) {
 /**
  * Compute new ELO ratings after a match, scaled by listen quality.
  *
- * voteWeight = listenWeight(winner) * listenWeight(loser)
- * Both anthems need to have been heard for a full-weight opinion.
+ * baseWeight = listenWeight(winner) × listenWeight(loser)  (0–1.0)
+ * anthemBonus adds FULL_ANTHEM_BONUS per fully-heard anthem, capped at 1.5.
+ * voteWeight = min(baseWeight × (1 + anthemBonus), 1.5)
  *
- * @param {number} ratingWinner
- * @param {number} ratingLoser
- * @param {number} totalListenWinnerMs  cumulative ms heard for winner anthem
- * @param {number} totalListenLoserMs   cumulative ms heard for loser anthem
- * @returns {{ winner: number, loser: number, vote_weight: number }}
+ * @param {number}  ratingWinner
+ * @param {number}  ratingLoser
+ * @param {number}  totalListenWinnerMs  cumulative ms heard for winner anthem
+ * @param {number}  totalListenLoserMs   cumulative ms heard for loser anthem
+ * @param {boolean} fullAnthemWinner     user heard the winner anthem in full
+ * @param {boolean} fullAnthemLoser      user heard the loser anthem in full
+ * @returns {{ winner: number, loser: number, vote_weight: number, anthem_bonus: boolean }}
  */
-function updateElo(ratingWinner, ratingLoser, totalListenWinnerMs = FULL_LISTEN_MS, totalListenLoserMs = FULL_LISTEN_MS) {
-    const weight = listenWeight(totalListenWinnerMs) * listenWeight(totalListenLoserMs);
+function updateElo(
+    ratingWinner, ratingLoser,
+    totalListenWinnerMs = FULL_LISTEN_MS, totalListenLoserMs = FULL_LISTEN_MS,
+    fullAnthemWinner = false, fullAnthemLoser = false
+) {
+    const baseWeight  = listenWeight(totalListenWinnerMs) * listenWeight(totalListenLoserMs);
+    const anthemBonus = (fullAnthemWinner ? FULL_ANTHEM_BONUS : 0) +
+                        (fullAnthemLoser  ? FULL_ANTHEM_BONUS : 0);
+    const weight = Math.min(baseWeight * (1 + anthemBonus), 1.5);
+
     const eW = expectedScore(ratingWinner, ratingLoser);
     const eL = expectedScore(ratingLoser, ratingWinner);
     return {
-        winner:      Math.round(ratingWinner + K * weight * (1 - eW)),
-        loser:       Math.round(ratingLoser  + K * weight * (0 - eL)),
-        vote_weight: Math.round(weight * 100) / 100,
+        winner:       Math.round(ratingWinner + K * weight * (1 - eW)),
+        loser:        Math.round(ratingLoser  + K * weight * (0 - eL)),
+        vote_weight:  Math.round(weight * 100) / 100,
+        anthem_bonus: fullAnthemWinner || fullAnthemLoser,
     };
 }
 
-module.exports = { INITIAL_ELO, FULL_LISTEN_MS, updateElo };
+module.exports = { INITIAL_ELO, FULL_LISTEN_MS, FULL_ANTHEM_BONUS, updateElo };
