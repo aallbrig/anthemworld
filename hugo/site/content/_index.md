@@ -70,15 +70,14 @@ title: "Welcome to Anthem World"
   <div class="col-md-7">
     <h2>About Anthem World</h2>
     <p>National anthems are powerful symbols of national identity and pride. Each anthem tells a unique story about a country's history, values, and aspirations. Anthem World brings together all 193 UN-recognized countries' national anthems in one interactive experience.</p>
-    <p>The <strong>Anthem Battle</strong> game uses the <a href="https://en.wikipedia.org/wiki/Elo_rating_system" target="_blank" rel="noopener">ELO rating system</a> — the same method used in chess and competitive gaming — to rank anthems based on head-to-head community votes. Each match requires listening to both anthems before voting.</p>
-
-    <h5 class="mt-3">Data Sources</h5>
-    <ul class="mb-0">
-      <li><a href="https://restcountries.com/" target="_blank" rel="noopener">REST Countries</a> — country metadata and flags</li>
-      <li><a href="https://www.wikidata.org/" target="_blank" rel="noopener">Wikidata</a> — anthem names, composers, adoption dates</li>
-      <li><a href="https://commons.wikimedia.org/" target="_blank" rel="noopener">Wikimedia Commons</a> — audio recordings (CC-BY-SA)</li>
-      <li><a href="https://www.cia.gov/the-world-factbook/" target="_blank" rel="noopener">CIA World Factbook</a> — historical context</li>
-    </ul>
+    <p>The <strong>Anthem Battle</strong> game uses the <a href="https://en.wikipedia.org/wiki/Elo_rating_system" target="_blank" rel="noopener">ELO rating system</a> — the same method used in chess and competitive gaming — to rank anthems based on head-to-head community votes. Your vote carries more weight the longer you listen.</p>
+  <h5 class="mt-3">Data Sources</h5>
+  <ul class="mb-0">
+    <li><a href="https://restcountries.com/" target="_blank" rel="noopener">REST Countries</a> — country metadata and flags</li>
+    <li><a href="https://www.wikidata.org/" target="_blank" rel="noopener">Wikidata</a> — anthem names, composers, adoption dates</li>
+    <li><a href="https://commons.wikimedia.org/" target="_blank" rel="noopener">Wikimedia Commons</a> — audio recordings (CC-BY-SA)</li>
+    <li><a href="https://www.cia.gov/the-world-factbook/" target="_blank" rel="noopener">CIA World Factbook</a> — historical context</li>
+  </ul>
   </div>
 
 </div>
