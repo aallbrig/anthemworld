@@ -21,6 +21,7 @@ const IGNORE_STRINGS = [
   'NS_ERROR_CONNECTION_REFUSED',
   'NS_BINDING_ABORTED',
   'net::ERR_ABORTED',
+  'NS_ERROR_PARSED_DATA_CACHED', // Firefox fires this when a media resource is served from cache
   'localhost:3001',
 ];
 

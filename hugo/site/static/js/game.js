@@ -153,18 +153,86 @@
     const timerEl  = $(side === 'a' ? 'listen-timer-a' : 'listen-timer-b');
     const pct      = Math.min(100, (totalMs / FULL_LISTEN_MS) * 100);
     const full     = pct >= 100;
+    const wasAlreadyFull = barEl.classList.contains('aw-bar-shimmer');
 
     barEl.style.width = pct + '%';
     barEl.classList.toggle('bg-success', full);
     barEl.classList.toggle('bg-primary', !full);
+    barEl.classList.toggle('aw-bar-shimmer', full);
 
     if (full) {
       statusEl.innerHTML = '✅ Full weight achieved!';
+      // Animate the checkmark text in — only on first time reaching full
+      if (!wasAlreadyFull) {
+        triggerCardJuice(side);
+      }
     } else {
-      timerEl.textContent = (totalMs / 1000).toFixed(1);
+      statusEl.innerHTML = `⏱ <span id="listen-timer-${side}">${(totalMs / 1000).toFixed(1)}</span>s heard`;
     }
 
     updateWeightHint();
+  }
+
+  const reducedMotion = () =>
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function triggerCardJuice(side) {
+    if (reducedMotion()) return;
+
+    // Spring-bounce the status text
+    const statusEl = $(`listen-status-${side}`);
+    statusEl.classList.add('animate__animated', 'animate__bounceIn');
+    statusEl.addEventListener('animationend', () =>
+      statusEl.classList.remove('animate__animated', 'animate__bounceIn'), { once: true });
+
+    // Pulse the card border green
+    const cardEl = $(side === 'a' ? 'card-a' : 'card-b');
+    cardEl.classList.add('aw-card-full', 'animate__animated', 'animate__pulse');
+    cardEl.addEventListener('animationend', () =>
+      cardEl.classList.remove('animate__animated', 'animate__pulse'), { once: true });
+
+    // If both are now full, fire the combo
+    if (listenAMs >= FULL_LISTEN_MS && listenBMs >= FULL_LISTEN_MS) {
+      triggerComboJuice();
+    }
+  }
+
+  let comboFired = false; // only fire once per matchup
+
+  function triggerComboJuice() {
+    if (comboFired || reducedMotion()) return;
+    comboFired = true;
+
+    // VS text rubberbands
+    const vsEl = $('vs-text');
+    if (vsEl) {
+      vsEl.classList.add('animate__animated', 'animate__rubberBand');
+      vsEl.addEventListener('animationend', () =>
+        vsEl.classList.remove('animate__animated', 'animate__rubberBand'), { once: true });
+    }
+
+    // Vote buttons glow powered-up (briefly, then stay)
+    [$('vote-a-btn'), $('vote-b-btn')].forEach(btn => {
+      if (btn) btn.classList.add('aw-vote-powered');
+    });
+
+    // Hint bar flashes gold
+    const hintInner = $('weight-hint-inner');
+    if (hintInner) {
+      hintInner.classList.add('aw-hint-gold');
+      hintInner.addEventListener('animationend', () =>
+        hintInner.classList.remove('aw-hint-gold'), { once: true });
+    }
+
+    // Confetti burst — canvas overlay, pointer-events:none, won't block votes
+    if (typeof confetti === 'function') {
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.55 },
+        colors: ['#28a745', '#20c997', '#ffc107', '#0d6efd'],
+      });
+    }
   }
 
   function updateWeightHint() {
@@ -244,8 +312,13 @@
     // Reset listen state
     listenAMs = 0;
     listenBMs = 0;
+    comboFired = false;
     if (listenATimerA) clearInterval(listenATimerA);
     if (listenBTimerB) clearInterval(listenBTimerB);
+    // Clear juice classes from previous round
+    [$('card-a'), $('card-b')].forEach(el => el?.classList.remove('aw-card-full'));
+    [$('vote-a-btn'), $('vote-b-btn')].forEach(el => el?.classList.remove('aw-vote-powered'));
+    [$('listen-bar-a'), $('listen-bar-b')].forEach(el => el?.classList.remove('aw-bar-shimmer'));
 
     const { ok, status, body } = await apiFetch(`/matchup?session_id=${sessionId}`);
 
