@@ -207,4 +207,4 @@ tests/playwright/test-results/
 # AWS SAM
 .aws-sam/
 samconfig.toml
-anthemworld
+/anthemworld

@@ -103,6 +103,75 @@ func (w *WikimediaSource) HealthCheck(ctx context.Context) HealthStatus {
 	}
 }
 
+// WikidataEntityResponse represents the Wikidata API entity response for P51 claims
+type WikidataEntityResponse struct {
+	Entities map[string]struct {
+		Claims map[string][]struct {
+			Mainsnak struct {
+				Datavalue struct {
+					// Value is interface{} because Wikidata claims can be strings (commonsMedia)
+					// or objects (entity-type references). P51 (audio) is always a string.
+					Value interface{} `json:"value"`
+				} `json:"datavalue"`
+			} `json:"mainsnak"`
+		} `json:"claims"`
+	} `json:"entities"`
+}
+
+// getWikidataAudioFile looks up the canonical Wikimedia Commons audio file for an anthem
+// using Wikidata's P51 (audio) property. Returns the "File:Foo.ogg" title, or "" if not found.
+func (w *WikimediaSource) getWikidataAudioFile(ctx context.Context, client *http.Client, wikidataID string) (string, error) {
+	apiURL := fmt.Sprintf(
+		"https://www.wikidata.org/w/api.php?action=wbgetentities&ids=%s&props=claims&format=json",
+		url.QueryEscape(wikidataID),
+	)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("Wikidata API returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var result WikidataEntityResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+
+	entity, ok := result.Entities[wikidataID]
+	if !ok {
+		return "", nil
+	}
+
+	p51Claims, ok := entity.Claims["P51"]
+	if !ok || len(p51Claims) == 0 {
+		return "", nil
+	}
+
+	// P51 (audio) datavalue is a commonsMedia string (the Wikimedia Commons filename)
+	for _, claim := range p51Claims {
+		if strVal, ok := claim.Mainsnak.Datavalue.Value.(string); ok && strVal != "" {
+			return "File:" + strVal, nil
+		}
+	}
+	return "", nil
+}
+
 // SearchResponse represents the API response for search
 type SearchResponse struct {
 	Query struct {
@@ -206,18 +275,40 @@ func (w *WikimediaSource) Download(ctx context.Context, db *sql.DB, logger *jobs
 			continue
 		}
 
-		// Strategy 1: Search by anthem name
-		searchQuery := fmt.Sprintf("%s", ca.anthemName)
-		audioFiles, err := w.searchAudioFiles(ctx, client, searchQuery)
-		if err != nil {
-			logger.Infof("Error searching for '%s': %v", ca.anthemName, err)
+		// Strategy 0: Get canonical audio file directly from Wikidata (P51 property)
+		var audioFiles []string
+		if ca.wikidataID != "" {
+			wikidataFile, err := w.getWikidataAudioFile(ctx, client, ca.wikidataID)
+			if err != nil {
+				logger.Infof("Wikidata P51 lookup failed for %s (%s): %v", ca.countryName, ca.wikidataID, err)
+			} else if wikidataFile != "" {
+				logger.Infof("Found Wikidata P51 audio for %s: %s", ca.countryName, wikidataFile)
+				audioFiles = []string{wikidataFile}
+			}
 		}
+
+		if len(audioFiles) == 0 {
+			// Strategy 1: Search by anthem name
+			searchQuery := ca.anthemName
+			audioFiles, err = w.searchAudioFiles(ctx, client, searchQuery)
+			if err != nil {
+				logger.Infof("Error searching for '%s': %v", ca.anthemName, err)
+			}
+			// Filter search results: filename must contain a word from the anthem or country name
+			if len(audioFiles) > 0 {
+				audioFiles = w.filterAudioByRelevance(audioFiles, ca.anthemName, ca.countryName)
+			}
+		}
+
 		if len(audioFiles) == 0 {
 			// Strategy 2: Search by country name + "national anthem"
-			searchQuery = fmt.Sprintf("National anthem %s", ca.countryName)
+			searchQuery := fmt.Sprintf("National anthem %s", ca.countryName)
 			audioFiles, err = w.searchAudioFiles(ctx, client, searchQuery)
 			if err != nil {
 				logger.Infof("Error searching for 'National anthem %s': %v", ca.countryName, err)
+			}
+			if len(audioFiles) > 0 {
+				audioFiles = w.filterAudioByRelevance(audioFiles, ca.anthemName, ca.countryName)
 			}
 			if len(audioFiles) == 0 {
 				skipped++
@@ -352,6 +443,38 @@ func (w *WikimediaSource) searchAudioFiles(ctx context.Context, client *http.Cli
 	}
 
 	return audioFiles, nil
+}
+
+// filterAudioByRelevance filters search results to those whose filename contains at least
+// one meaningful word from the anthem name or country name. This prevents clearly wrong
+// results like "God Save the King" appearing for Jamaica, or an opera piece for Bosnia.
+func (w *WikimediaSource) filterAudioByRelevance(files []string, anthemName, countryName string) []string {
+	stopWords := map[string]bool{
+		"the": true, "of": true, "and": true, "in": true, "a": true, "an": true,
+		"to": true, "for": true, "national": true, "anthem": true, "song": true,
+		"file": true, "music": true, "instrumental": true,
+	}
+
+	// Build keyword set from anthem name + country name
+	keywords := make(map[string]bool)
+	for _, word := range strings.Fields(strings.ToLower(anthemName + " " + countryName)) {
+		word = strings.Trim(word, ".,;:'\"()-")
+		if len(word) > 3 && !stopWords[word] {
+			keywords[word] = true
+		}
+	}
+
+	var filtered []string
+	for _, f := range files {
+		filenameLower := strings.ToLower(strings.ReplaceAll(f, "_", " "))
+		for kw := range keywords {
+			if strings.Contains(filenameLower, kw) {
+				filtered = append(filtered, f)
+				break
+			}
+		}
+	}
+	return filtered
 }
 
 // getCategoryAudioFiles retrieves audio files from a Wikimedia Commons category
