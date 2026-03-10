@@ -218,7 +218,8 @@
     $('name-a').textContent   = data.country_a.name || countryAId;
     $('anthem-a').textContent = data.country_a.anthem_name || '';
     $('elo-a').textContent    = data.country_a.elo_score || 1500;
-    $('audio-a').src = data.country_a.audio_url || '';
+    $('audio-a').src     = data.country_a.audio_url || '';
+    $('audio-a').preload = 'metadata';
     $('listen-timer-a').textContent = (listenAMs / 1000).toFixed(1);
     $('vote-a-btn').disabled  = false;
     if (listenAMs > 0) show($('listen-indicator-a')); else hide($('listen-indicator-a'));
@@ -229,7 +230,8 @@
     $('name-b').textContent   = data.country_b.name || countryBId;
     $('anthem-b').textContent = data.country_b.anthem_name || '';
     $('elo-b').textContent    = data.country_b.elo_score || 1500;
-    $('audio-b').src = data.country_b.audio_url || '';
+    $('audio-b').src     = data.country_b.audio_url || '';
+    $('audio-b').preload = 'metadata';
     $('listen-timer-b').textContent = (listenBMs / 1000).toFixed(1);
     $('vote-b-btn').disabled  = false;
     if (listenBMs > 0) show($('listen-indicator-b')); else hide($('listen-indicator-b'));
