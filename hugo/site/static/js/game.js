@@ -55,6 +55,7 @@
   let mapA = null;
   let mapB = null;
   let geojsonCache = null; // loaded once, reused
+  let unmappableRetryCount = 0;
 
   function initMaps(geojsonData) {
     if (mapA) return; // already initialized
@@ -63,12 +64,14 @@
   }
 
   function flyMapsToCountries(isoA, nameA, isoB, nameB) {
-    if (!mapA || !mapB) return;
+    if (!mapA || !mapB) return null;
     // Invalidate so Leaflet recalculates size after container became visible
     mapA.invalidate();
     mapB.invalidate();
-    mapA.flyToCountry(isoA, nameA);
-    mapB.flyToCountry(isoB, nameB);
+    return {
+      a: mapA.flyToCountry(isoA, nameA),
+      b: mapB.flyToCountry(isoB, nameB),
+    };
   }
 
   function resetMaps() {
@@ -583,10 +586,25 @@
 
     // Init maps on first render (container must be visible before Leaflet can measure it)
     if (geojsonCache && !mapA) initMaps(geojsonCache);
-    flyMapsToCountries(
+    const mapResolution = flyMapsToCountries(
       data.country_a.country_id, data.country_a.name,
       data.country_b.country_id, data.country_b.name
     );
+    if (mapResolution && (!mapResolution.a || !mapResolution.b)) {
+      console.warn('CountryHighlightMap: skipping unmappable matchup', {
+        countryA: data.country_a.country_id,
+        countryB: data.country_b.country_id,
+      });
+      if (unmappableRetryCount < 6) {
+        unmappableRetryCount++;
+        loadMatchup();
+        return;
+      }
+      unmappableRetryCount = 0;
+      showError('Map error', 'Could not find a live-map matchup right now. Please try again.', loadMatchup);
+      return;
+    }
+    unmappableRetryCount = 0;
   }
 
   // ─── Voting ────────────────────────────────────────────────────────────────
