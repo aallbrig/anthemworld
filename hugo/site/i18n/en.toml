@@ -4,6 +4,9 @@ other = "🌍 Anthem World"
 [nav_toggle]
 other = "Toggle navigation"
 
+[nav_language]
+other = "Language"
+
 [nav_home]
 other = "Home"
 
@@ -42,6 +45,30 @@ other = "Scan to share:"
 
 [footer_copyright]
 other = "&copy; 2026 Anthem World. Data sources: REST Countries API, Wikidata, Wikimedia Commons."
+
+[home_top3_fallback_html]
+other = "No votes yet — <a href=\"{gameUrl}\">be the first to vote!</a>"
+
+[map_error_country_data]
+other = "Failed to load country data"
+
+[map_unknown_country]
+other = "Unknown Country"
+
+[map_music]
+other = "Music"
+
+[map_lyrics]
+other = "Lyrics"
+
+[map_adopted]
+other = "Adopted"
+
+[map_no_anthem]
+other = "No anthem data available yet."
+
+[map_capital]
+other = "Capital"
 
 [countries_page_title]
 other = "Countries & National Anthems"

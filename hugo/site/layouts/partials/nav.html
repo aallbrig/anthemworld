@@ -9,19 +9,31 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <a class="nav-link{{ if eq .RelPermalink "/" }} active{{ end }}" href="{{ "" | relLangURL }}">{{ i18n "nav_home" }}</a>
+                    <a class="nav-link{{ if .IsHome }} active{{ end }}" href="{{ "" | relLangURL }}">{{ i18n "nav_home" }}</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ if eq .RelPermalink "/map/" }} active{{ end }}" href="{{ "map/" | relLangURL }}">{{ i18n "nav_map" }}</a>
+                    <a class="nav-link{{ with .File }}{{ if eq .BaseFileName "map" }} active{{ end }}{{ end }}" href="{{ "map/" | relLangURL }}">{{ i18n "nav_map" }}</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ if eq .RelPermalink "/countries/" }} active{{ end }}" href="{{ "countries/" | relLangURL }}">{{ i18n "nav_countries" }}</a>
+                    <a class="nav-link{{ with .File }}{{ if eq .BaseFileName "countries" }} active{{ end }}{{ end }}" href="{{ "countries/" | relLangURL }}">{{ i18n "nav_countries" }}</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ if eq .RelPermalink "/game/" }} active{{ end }}" href="{{ "game/" | relLangURL }}">{{ i18n "nav_game" }}</a>
+                    <a class="nav-link{{ with .File }}{{ if eq .BaseFileName "game" }} active{{ end }}{{ end }}" href="{{ "game/" | relLangURL }}">{{ i18n "nav_game" }}</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ if eq .RelPermalink "/leaderboard/" }} active{{ end }}" href="{{ "leaderboard/" | relLangURL }}">{{ i18n "nav_leaderboard" }}</a>
+                    <a class="nav-link{{ with .File }}{{ if eq .BaseFileName "leaderboard" }} active{{ end }}{{ end }}" href="{{ "leaderboard/" | relLangURL }}">{{ i18n "nav_leaderboard" }}</a>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="languageMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ i18n "nav_language" }}: {{ .Site.Language.LanguageName }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageMenu">
+                        {{ range $.Sites }}
+                        <li>
+                            <a class="dropdown-item{{ if eq .Language.Lang $.Site.Language.Lang }} active{{ end }}" href="{{ .Home.RelPermalink }}">{{ .Language.LanguageName }}</a>
+                        </li>
+                        {{ end }}
+                    </ul>
                 </li>
             </ul>
         </div>

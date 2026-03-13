@@ -3,6 +3,8 @@ let map;
 let countriesLayer;
 let anthemData = {};     // keyed by ISO alpha-3 upper/lower
 let anthemByName = {};   // keyed by country name (common_name preferred, then name)
+const t = (key, vars = {}, fallback = '') =>
+    window.AnthemI18n?.t?.(key, vars, fallback) ?? fallback || key;
 
 // Load anthem data from generated JSON file
 async function loadAnthemData() {
@@ -44,7 +46,7 @@ function loadCountryBoundaries() {
     fetch('/data/countries.geojson')
         .then(response => {
             if (!response.ok) {
-                throw new Error('Failed to load country data');
+                throw new Error(t('map_error_country_data'));
             }
             return response.json();
         })
@@ -122,11 +124,11 @@ function buildPopupContent(countryName, isoCode, countryRecord) {
             ? `${anthem.name} <span class="text-muted small">(${anthem.title_en})</span>`
             : anthem.name;
         const composerLine = anthem.composer
-            ? `<div class="small text-muted">Music: ${anthem.composer}</div>` : '';
+            ? `<div class="small text-muted">${t('map_music')}: ${anthem.composer}</div>` : '';
         const lyricistLine = anthem.lyricist && anthem.lyricist !== anthem.composer
-            ? `<div class="small text-muted">Lyrics: ${anthem.lyricist}</div>` : '';
+            ? `<div class="small text-muted">${t('map_lyrics')}: ${anthem.lyricist}</div>` : '';
         const dateLine = anthem.adopted_date
-            ? `<div class="small text-muted">Adopted: ${anthem.adopted_date.substring(0, 4)}</div>` : '';
+            ? `<div class="small text-muted">${t('map_adopted')}: ${anthem.adopted_date.substring(0, 4)}</div>` : '';
         const historySnippet = anthem.history
             ? `<p class="small mt-1 mb-0" style="max-height:80px;overflow:hidden;text-overflow:ellipsis;">${anthem.history.substring(0, 200)}${anthem.history.length > 200 ? '…' : ''}</p>`
             : '';
@@ -149,11 +151,11 @@ function buildPopupContent(countryName, isoCode, countryRecord) {
             ${historySnippet}
             ${audioPlayerHTML}`;
     } else {
-        anthemSection = `<hr class="my-1"><p class="small text-muted mb-0"><em>No anthem data available yet.</em></p>`;
+        anthemSection = `<hr class="my-1"><p class="small text-muted mb-0"><em>${t('map_no_anthem')}</em></p>`;
     }
 
     const capital = countryRecord.capital
-        ? `<div class="small text-muted">Capital: ${countryRecord.capital}</div>` : '';
+        ? `<div class="small text-muted">${t('map_capital')}: ${countryRecord.capital}</div>` : '';
 
     return `
         <div class="country-popup" style="min-width:220px;max-width:300px;">
@@ -167,7 +169,7 @@ function onCountryClick(e) {
     const layer = e.target;
     const props = layer.feature.properties;
 
-    const countryName = props.name || props.ADMIN || props.NAME || 'Unknown Country';
+    const countryName = props.name || props.ADMIN || props.NAME || t('map_unknown_country');
     const isoCode = (props.iso_a3 || props.ISO_A3 || props.id || '').toUpperCase();
 
     // Try ISO lookup first, then fall back to name-based lookup
@@ -191,4 +193,3 @@ document.addEventListener('DOMContentLoaded', function() {
         initMap();
     }
 });
-

@@ -9,6 +9,10 @@ title = 'Anthem World - National Anthems of the World'
     languageCode = 'en-us'
     languageName = 'English'
     weight = 1
+  [languages.es]
+    languageCode = 'es-es'
+    languageName = 'Español'
+    weight = 2
 
 [params]
   description = "Explore the national anthems of all 193 UN-recognized countries through an interactive world map"

@@ -8,20 +8,26 @@
 
   const container = document.getElementById('home-top3');
   if (!container) return;
+  const t = (key, vars = {}, fallback = '') =>
+    window.AnthemI18n?.t?.(key, vars, fallback) ?? fallback || key;
 
   // API base must be set explicitly via data-api-base attribute on the container.
   // This prevents spurious fetches in CI (Hugo runs on localhost but the game API doesn't).
   const API = container.dataset.apiBase || '';
 
-  const FALLBACK = '<p class="text-muted small">No votes yet — <a href="/game/">be the first to vote!</a></p>';
-
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
+  function fallbackHtml() {
+    return `<p class="text-muted small">${t('home_top3_fallback_html', {
+      gameUrl: window.AnthemI18n?.route?.('game', '/game/') || '/game/',
+    })}</p>`;
+  }
+
   async function load() {
     if (!API) {
-      container.innerHTML = FALLBACK;
+      container.innerHTML = fallbackHtml();
       return;
     }
     try {
@@ -30,7 +36,7 @@
       const data = await res.json();
       const top = (data.countries || []).slice(0, 3);
       if (!top.length) {
-        container.innerHTML = FALLBACK;
+        container.innerHTML = fallbackHtml();
         return;
       }
       const medals = ['🥇', '🥈', '🥉'];
@@ -47,7 +53,7 @@
         </div>`;
       }).join('');
     } catch {
-      container.innerHTML = FALLBACK;
+      container.innerHTML = fallbackHtml();
     }
   }
 
