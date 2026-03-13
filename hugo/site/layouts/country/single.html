@@ -5,8 +5,8 @@
 
   <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="/">Home</a></li>
-      <li class="breadcrumb-item"><a href="/countries/">Countries</a></li>
+      <li class="breadcrumb-item"><a href="{{ "" | relLangURL }}">{{ i18n "nav_home" }}</a></li>
+      <li class="breadcrumb-item"><a href="{{ "countries/" | relLangURL }}">{{ i18n "nav_countries" }}</a></li>
       <li class="breadcrumb-item active" aria-current="page" id="breadcrumb-name">{{ .Title }}</li>
     </ol>
   </nav>
@@ -14,13 +14,13 @@
   {{/* Loading state */}}
   <div id="country-loading" class="text-center py-5">
     <div class="spinner-border text-secondary" role="status">
-      <span class="visually-hidden">Loading…</span>
+      <span class="visually-hidden">{{ i18n "country_detail_loading" }}</span>
     </div>
   </div>
 
   {{/* Error state */}}
   <div id="country-error" class="alert alert-warning d-none">
-    Country data could not be loaded.
+    {{ i18n "country_detail_error" }}
   </div>
 
   {{/* Content — populated by country-detail.js */}}
@@ -37,10 +37,10 @@
           </div>
           <ul class="list-group list-group-flush text-center" id="cd-meta-list">
             <li class="list-group-item d-none" id="cd-capital-item">
-              <small class="text-muted">Capital</small><br><span id="cd-capital"></span>
+              <small class="text-muted">{{ i18n "country_detail_capital" }}</small><br><span id="cd-capital"></span>
             </li>
             <li class="list-group-item d-none" id="cd-subregion-item">
-              <small class="text-muted">Subregion</small><br><span id="cd-subregion"></span>
+              <small class="text-muted">{{ i18n "country_detail_subregion" }}</small><br><span id="cd-subregion"></span>
             </li>
           </ul>
         </div>
@@ -50,7 +50,7 @@
         <div class="card shadow-sm mb-4" id="cd-anthem-card">
           <div class="card-header d-flex align-items-center gap-2">
             <span class="fs-4">🎵</span>
-            <h2 class="h5 mb-0">National Anthem</h2>
+            <h2 class="h5 mb-0">{{ i18n "country_detail_anthem_header" }}</h2>
           </div>
           <div class="card-body">
             <h3 class="h4 mb-1" id="cd-anthem-name"></h3>
@@ -63,7 +63,7 @@
         <div class="card shadow-sm mb-4 d-none" id="cd-audio-card">
           <div class="card-header d-flex align-items-center gap-2">
             <span class="fs-4">🔊</span>
-            <h2 class="h5 mb-0">Listen</h2>
+            <h2 class="h5 mb-0">{{ i18n "country_detail_listen_header" }}</h2>
           </div>
           <div class="card-body">
             <audio id="cd-audio" controls class="w-100" preload="none"></audio>
@@ -73,14 +73,14 @@
 
         <div class="alert alert-light border d-none" id="cd-no-audio">
           <span class="me-2">🔇</span>
-          Audio recording not yet available for this anthem.
+          {{ i18n "country_detail_no_audio_text" }}
           <a href="https://commons.wikimedia.org/wiki/Category:National_anthems"
-             target="_blank" rel="noopener" class="alert-link">Wikimedia Commons ↗</a>
+             target="_blank" rel="noopener" class="alert-link">{{ i18n "country_detail_no_audio_link" }}</a>
         </div>
 
         <div class="card shadow-sm d-none" id="cd-identity-card">
           <div class="card-header">
-            <h2 class="h5 mb-0">National Identity</h2>
+            <h2 class="h5 mb-0">{{ i18n "country_detail_identity_header" }}</h2>
           </div>
           <div class="card-body">
             <dl class="row mb-0" id="cd-identity-dl"></dl>
@@ -93,5 +93,5 @@
 {{ end }}
 
 {{ define "scripts" }}
-<script src="/js/country-detail.js"></script>
+<script src="{{ "js/country-detail.js" | relURL }}"></script>
 {{ end }}

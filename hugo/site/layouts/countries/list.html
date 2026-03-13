@@ -1,10 +1,10 @@
-{{ define "title" }}Countries & National Anthems — {{ .Site.Title }}{{ end }}
+{{ define "title" }}{{ i18n "countries_page_title" }} — {{ .Site.Title }}{{ end }}
 
 {{ define "main" }}
 <div class="container my-5">
   <div class="mb-4">
-    <h1>Countries and National Anthems</h1>
-    <p class="lead">Browse and search through all 193 UN-recognized countries and their national anthems.</p>
+    <h1>{{ i18n "countries_heading" }}</h1>
+    <p class="lead">{{ i18n "countries_lead" }}</p>
   </div>
 
   <div class="table-responsive">
@@ -24,5 +24,5 @@
 {{ end }}
 
 {{ define "scripts" }}
-<script src="/js/countries-table.js"></script>
+<script src="{{ "js/countries-table.js" | relURL }}"></script>
 {{ end }}

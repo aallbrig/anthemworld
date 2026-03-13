@@ -5,6 +5,8 @@
  */
 (function () {
   'use strict';
+  const t = (key, vars = {}, fallback = '') =>
+    window.AnthemI18n?.t?.(key, vars, fallback) ?? (fallback || key);
 
   function show(el) { el.classList.remove('d-none'); }
   function hide(el) { el.classList.add('d-none'); }
@@ -33,6 +35,7 @@
       const c = data[iso];
       if (!c) {
         hide(document.getElementById('country-loading'));
+        document.getElementById('country-error').textContent = t('country_detail_error');
         show(document.getElementById('country-error'));
         return;
       }
@@ -40,6 +43,7 @@
     })
     .catch(() => {
       hide(document.getElementById('country-loading'));
+      document.getElementById('country-error').textContent = t('country_detail_error');
       show(document.getElementById('country-error'));
     });
 
@@ -84,13 +88,13 @@
       show(document.getElementById('cd-anthem-title-en'));
     }
     const dl = document.getElementById('cd-anthem-dl');
-    addDlRow(dl, 'Composer', a.composer);
-    addDlRow(dl, 'Lyricist', a.lyricist);
-    addDlRow(dl, 'Adopted', a.adopted_date);
+    addDlRow(dl, t('country_detail_composer'), a.composer);
+    addDlRow(dl, t('country_detail_lyricist'), a.lyricist);
+    addDlRow(dl, t('map_adopted'), a.adopted_date);
     if (a.wikipedia_url) {
       dl.insertAdjacentHTML('beforeend',
-        `<dt class="col-sm-4">Wikipedia</dt>` +
-        `<dd class="col-sm-8"><a href="${esc(a.wikipedia_url)}" target="_blank" rel="noopener">Read more ↗</a></dd>`);
+        `<dt class="col-sm-4">${esc(t('country_detail_wikipedia'))}</dt>` +
+        `<dd class="col-sm-8"><a href="${esc(a.wikipedia_url)}" target="_blank" rel="noopener">${esc(t('country_detail_read_more'))}</a></dd>`);
     }
     if (a.history) {
       setText('cd-anthem-history', a.history);
@@ -105,7 +109,7 @@
       audio.setAttribute('type', window.AudioController.mime(af.format));
       audio.dataset.anthem = a.name || commonName;
       if (af.license) {
-        setText('cd-audio-license', `License: ${af.license}`);
+        setText('cd-audio-license', `${t('country_detail_license')}: ${af.license}`);
         show(document.getElementById('cd-audio-license'));
       }
       show(document.getElementById('cd-audio-card'));
@@ -115,8 +119,8 @@
 
     // ── National identity ──────────────────────────────────────────────────
     const idDl = document.getElementById('cd-identity-dl');
-    addDlRow(idDl, 'Colors', c.national_colors);
-    addDlRow(idDl, 'Symbols', c.national_symbols);
+    addDlRow(idDl, t('country_detail_colors'), c.national_colors);
+    addDlRow(idDl, t('country_detail_symbols'), c.national_symbols);
     if (idDl.children.length > 0) {
       show(document.getElementById('cd-identity-card'));
     }

@@ -363,3 +363,54 @@ other = "Todavía no hay datos del himno."
 
 [map_capital]
 other = "Capital"
+
+[country_detail_page_title]
+other = "Detalle del país"
+
+[country_detail_loading]
+other = "Cargando…"
+
+[country_detail_error]
+other = "No se pudieron cargar los datos del país."
+
+[country_detail_capital]
+other = "Capital"
+
+[country_detail_subregion]
+other = "Subregión"
+
+[country_detail_anthem_header]
+other = "Himno nacional"
+
+[country_detail_listen_header]
+other = "Escuchar"
+
+[country_detail_no_audio_text]
+other = "Aún no hay una grabación de audio disponible para este himno."
+
+[country_detail_no_audio_link]
+other = "Wikimedia Commons ↗"
+
+[country_detail_identity_header]
+other = "Identidad nacional"
+
+[country_detail_composer]
+other = "Compositor"
+
+[country_detail_lyricist]
+other = "Letrista"
+
+[country_detail_wikipedia]
+other = "Wikipedia"
+
+[country_detail_read_more]
+other = "Leer más ↗"
+
+[country_detail_license]
+other = "Licencia"
+
+[country_detail_colors]
+other = "Colores"
+
+[country_detail_symbols]
+other = "Símbolos"

@@ -70,6 +70,57 @@ other = "No anthem data available yet."
 [map_capital]
 other = "Capital"
 
+[country_detail_page_title]
+other = "Country details"
+
+[country_detail_loading]
+other = "Loading…"
+
+[country_detail_error]
+other = "Country data could not be loaded."
+
+[country_detail_capital]
+other = "Capital"
+
+[country_detail_subregion]
+other = "Subregion"
+
+[country_detail_anthem_header]
+other = "National Anthem"
+
+[country_detail_listen_header]
+other = "Listen"
+
+[country_detail_no_audio_text]
+other = "Audio recording not yet available for this anthem."
+
+[country_detail_no_audio_link]
+other = "Wikimedia Commons ↗"
+
+[country_detail_identity_header]
+other = "National Identity"
+
+[country_detail_composer]
+other = "Composer"
+
+[country_detail_lyricist]
+other = "Lyricist"
+
+[country_detail_wikipedia]
+other = "Wikipedia"
+
+[country_detail_read_more]
+other = "Read more ↗"
+
+[country_detail_license]
+other = "License"
+
+[country_detail_colors]
+other = "Colors"
+
+[country_detail_symbols]
+other = "Symbols"
+
 [countries_page_title]
 other = "Countries & National Anthems"
 
