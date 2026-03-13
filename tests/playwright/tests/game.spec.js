@@ -64,6 +64,28 @@ test.describe('Game page — structure', () => {
     await expect(page.locator('#map-b')).toHaveClass(/leaflet-container/, { timeout: 10_000 });
   });
 
+  test('live maps resolve matchup countries instead of falling back to world view', async ({ page }) => {
+    await page.goto(GAME_URL);
+    await waitForMatchup(page);
+
+    // Check multiple random matchups so we catch regressions where certain
+    // countries fail to resolve onto the live battle maps.
+    for (let i = 0; i < 5; i++) {
+      await expect(page.locator('#map-a')).toHaveAttribute('data-country-match', 'ok', { timeout: 10_000 });
+      await expect(page.locator('#map-b')).toHaveAttribute('data-country-match', 'ok', { timeout: 10_000 });
+
+      const isoA = await page.locator('#map-a').getAttribute('data-country-iso');
+      const isoB = await page.locator('#map-b').getAttribute('data-country-iso');
+      expect(isoA).toMatch(/^[A-Z]{3}$/);
+      expect(isoB).toMatch(/^[A-Z]{3}$/);
+
+      if (i < 4) {
+        await page.locator('#skip-btn').click();
+        await waitForMatchup(page);
+      }
+    }
+  });
+
   test('renders audio players for both countries', async ({ page }) => {
     await page.goto(GAME_URL);
     await waitForMatchup(page);

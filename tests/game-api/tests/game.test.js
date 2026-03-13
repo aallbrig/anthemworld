@@ -159,7 +159,7 @@ describe('POST /vote', () => {
       body: JSON.stringify({
         session_id: voteSessionId, matchup_id: matchupId,
         winner_id: countryAId, loser_id: countryBId,
-        listen_a_ms: 100, listen_b_ms: 100,  // minimal listen — accepted, but low weight
+        listen_a_ms: 1000, listen_b_ms: 1000,  // 1s each — accepted, but still only partial weight
       }),
     });
     assert.equal(status, 200, `Expected 200, got ${status}: ${JSON.stringify(body)}`);
