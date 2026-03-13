@@ -27,4 +27,20 @@ test.describe('Spanish locale smoke tests', () => {
     await expect(page.getByText('Haz clic en cualquier país para ver la información de su himno nacional.')).toBeVisible();
     await expect(page.getByText('Cómo usarlo:')).toBeVisible();
   });
+
+  test('language switcher keeps equivalent translated top-level page', async ({ page }) => {
+    await page.goto('/es/game/');
+
+    await page.getByRole('link', { name: /Idioma: Español/ }).click();
+    const englishLink = page.getByRole('link', { name: 'English' });
+    await expect(englishLink).toHaveAttribute('href', '/game/');
+  });
+
+  test('language switcher falls back to localized section page for untranslated country detail', async ({ page }) => {
+    await page.goto('/countries/usa/');
+
+    await page.getByRole('link', { name: /Language: English/ }).click();
+    const spanishLink = page.getByRole('link', { name: 'Español' });
+    await expect(spanishLink).toHaveAttribute('href', '/es/countries/');
+  });
 });

@@ -28,6 +28,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../shared/db');
 const { updateElo, INITIAL_ELO } = require('../shared/elo');
 const { ok, badRequest, forbidden, tooManyRequests, serverError, options } = require('../shared/response');
+const { detectLanguage } = require('../shared/messages');
 
 const SESSIONS_TABLE         = process.env.SESSIONS_TABLE;
 const RANKINGS_TABLE         = process.env.RANKINGS_TABLE;
@@ -37,36 +38,37 @@ const MAX_VOTES_PER_SESSION  = parseInt(process.env.MAX_VOTES_PER_SESSION || '10
 
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
+    const lang = detectLanguage(event.headers);
 
     let body;
     try {
         body = JSON.parse(event.body || '{}');
     } catch {
-        return badRequest('Invalid JSON body');
+        return badRequest('vote_invalid_json', null, lang);
     }
 
     const { session_id, matchup_id, winner_id, loser_id, listen_a_ms, listen_b_ms,
             full_anthem_a, full_anthem_b } = body;
 
-    if (!session_id)  return badRequest('session_id is required');
-    if (!matchup_id)  return badRequest('matchup_id is required');
-    if (!winner_id)   return badRequest('winner_id is required');
-    if (!loser_id)    return badRequest('loser_id is required');
-    if (winner_id === loser_id) return badRequest('winner_id and loser_id must be different');
+    if (!session_id)  return badRequest('vote_session_required', null, lang);
+    if (!matchup_id)  return badRequest('vote_matchup_required', null, lang);
+    if (!winner_id)   return badRequest('vote_winner_required', null, lang);
+    if (!loser_id)    return badRequest('vote_loser_required', null, lang);
+    if (winner_id === loser_id) return badRequest('vote_same_country', null, lang);
     if (typeof listen_a_ms !== 'number' || typeof listen_b_ms !== 'number') {
-        return badRequest('listen_a_ms and listen_b_ms must be numbers (milliseconds)');
+        return badRequest('vote_listen_numbers', null, lang);
     }
 
     try {
         // Load session
         const sessionRes = await db.send(new GetCommand({ TableName: SESSIONS_TABLE, Key: { session_id } }));
-        if (!sessionRes.Item) return forbidden('Session not found or expired. Create a new session.');
+        if (!sessionRes.Item) return forbidden('session_not_found', null, lang);
 
         const session = sessionRes.Item;
 
         // Validate matchup ID matches the active one
         if (!session.current_matchup || session.current_matchup.matchup_id !== matchup_id) {
-            return badRequest('matchup_id does not match your current matchup. Request a new matchup first.');
+            return badRequest('vote_matchup_mismatch', null, lang);
         }
 
         // Validate winner/loser are the expected countries
@@ -74,7 +76,7 @@ exports.handler = async (event) => {
         const validPair = (winner_id === country_a && loser_id === country_b) ||
                           (winner_id === country_b && loser_id === country_a);
         if (!validPair) {
-            return badRequest('winner_id/loser_id do not match matchup countries.');
+            return badRequest('vote_pair_mismatch', null, lang);
         }
 
         // Rate limit: max votes per calendar day (UTC) per session
@@ -82,7 +84,7 @@ exports.handler = async (event) => {
         const voteDate  = session.vote_date  || '';
         const voteToday = session.vote_date === today ? (session.vote_count_today || 0) : 0;
         if (voteToday >= MAX_VOTES_PER_SESSION) {
-            return tooManyRequests(`Maximum ${MAX_VOTES_PER_SESSION} votes per day reached. Come back tomorrow!`, 86400);
+            return tooManyRequests('vote_limit_reached', 86400, lang, { max: MAX_VOTES_PER_SESSION });
         }
 
         // Fetch session listen history for both countries
@@ -179,6 +181,6 @@ exports.handler = async (event) => {
         });
     } catch (err) {
         console.error('vote error:', err);
-        return serverError();
+        return serverError(null, lang);
     }
 };

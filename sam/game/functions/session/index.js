@@ -11,6 +11,7 @@ const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const db = require('../shared/db');
 const { created, tooManyRequests, options, serverError } = require('../shared/response');
+const { detectLanguage } = require('../shared/messages');
 
 const SESSIONS_TABLE        = process.env.SESSIONS_TABLE;
 const MAX_SESSIONS_PER_IP   = parseInt(process.env.MAX_SESSIONS_PER_IP || '5', 10);
@@ -19,6 +20,7 @@ const SESSION_TTL_SECONDS   = 24 * 60 * 60;
 
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
+    const lang = detectLanguage(event.headers);
 
     try {
         const ip = event.requestContext?.identity?.sourceIp || 'unknown';
@@ -36,8 +38,10 @@ exports.handler = async (event) => {
 
         if ((existing.Count || 0) >= MAX_SESSIONS_PER_IP) {
             return tooManyRequests(
-                `Maximum ${MAX_SESSIONS_PER_IP} sessions per IP per day reached. Try again tomorrow.`,
-                86400
+                'session_limit_reached',
+                86400,
+                lang,
+                { max: MAX_SESSIONS_PER_IP }
             );
         }
 
@@ -63,6 +67,6 @@ exports.handler = async (event) => {
         return created({ session_id: sessionId, user_country: userCountry, created_at: createdAt });
     } catch (err) {
         console.error('session error:', err);
-        return serverError();
+        return serverError(null, lang);
     }
 };

@@ -9,11 +9,13 @@
 const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const db = require('../shared/db');
 const { ok, serverError, options } = require('../shared/response');
+const { detectLanguage } = require('../shared/messages');
 
 const RANKINGS_TABLE = process.env.RANKINGS_TABLE;
 
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
+    const lang = detectLanguage(event.headers);
 
     const limit = Math.min(parseInt(event.queryStringParameters?.limit || '50', 10), 200);
 
@@ -52,6 +54,6 @@ exports.handler = async (event) => {
         });
     } catch (err) {
         console.error('leaderboard error:', err);
-        return serverError();
+        return serverError(null, lang);
     }
 };

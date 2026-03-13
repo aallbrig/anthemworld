@@ -28,9 +28,23 @@
                         {{ i18n "nav_language" }}: {{ .Site.Language.LanguageName }}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageMenu">
-                        {{ range $.Sites }}
+                        {{ $current := . }}
+                        {{ range $site := $.Sites }}
+                        {{ $target := $site.Home.RelPermalink }}
+                        {{ if eq $site.Language.Lang $current.Site.Language.Lang }}
+                            {{ $target = $current.RelPermalink }}
+                        {{ else }}
+                            {{ range $translation := $current.AllTranslations }}
+                                {{ if eq $translation.Language.Lang $site.Language.Lang }}
+                                    {{ $target = $translation.RelPermalink }}
+                                {{ end }}
+                            {{ end }}
+                            {{ if and (eq $target $site.Home.RelPermalink) (ne $current.Section "") }}
+                                {{ $target = printf "%s%s/" $site.Home.RelPermalink $current.Section | replaceRE "/+" "/" }}
+                            {{ end }}
+                        {{ end }}
                         <li>
-                            <a class="dropdown-item{{ if eq .Language.Lang $.Site.Language.Lang }} active{{ end }}" href="{{ .Home.RelPermalink }}">{{ .Language.LanguageName }}</a>
+                            <a class="dropdown-item{{ if eq $site.Language.Lang $.Site.Language.Lang }} active{{ end }}" href="{{ $target }}">{{ $site.Language.LanguageName }}</a>
                         </li>
                         {{ end }}
                     </ul>

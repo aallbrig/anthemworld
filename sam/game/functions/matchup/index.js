@@ -16,6 +16,7 @@ const { GetCommand, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamod
 const { v4: uuidv4 } = require('uuid');
 const db = require('../shared/db');
 const { ok, badRequest, forbidden, serverError, options } = require('../shared/response');
+const { detectLanguage } = require('../shared/messages');
 
 const SESSIONS_TABLE = process.env.SESSIONS_TABLE;
 const RANKINGS_TABLE = process.env.RANKINGS_TABLE;
@@ -23,14 +24,15 @@ const LISTEN_TABLE   = process.env.LISTEN_TABLE;
 
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
+    const lang = detectLanguage(event.headers);
 
     const sessionId = event.queryStringParameters?.session_id;
-    if (!sessionId) return badRequest('session_id query parameter is required');
+    if (!sessionId) return badRequest('matchup_session_required', null, lang);
 
     try {
         // Validate session
         const sessionRes = await db.send(new GetCommand({ TableName: SESSIONS_TABLE, Key: { session_id: sessionId } }));
-        if (!sessionRes.Item) return forbidden('Session not found or expired. Create a new session.');
+        if (!sessionRes.Item) return forbidden('session_not_found', null, lang);
 
         // Fetch all ranked countries (scan is fine at 193 items)
         const scanRes = await db.send(new ScanCommand({ TableName: RANKINGS_TABLE }));
@@ -38,7 +40,7 @@ exports.handler = async (event) => {
         const allCountries = (scanRes.Items || []).filter(c => c.audio_url);
 
         if (allCountries.length < 2) {
-            return serverError('Not enough countries in rankings table. Run data initialization first.');
+            return serverError('matchup_not_enough_countries', lang);
         }
 
         // Decide wildcard (every 10 votes inject a random pairing)
@@ -101,6 +103,6 @@ exports.handler = async (event) => {
         });
     } catch (err) {
         console.error('matchup error:', err);
-        return serverError();
+        return serverError(null, lang);
     }
 };
