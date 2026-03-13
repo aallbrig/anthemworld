@@ -8,6 +8,8 @@
   'use strict';
 
   const API = (window.GAME_API_URL || '').replace(/\/$/, '');
+  const t = (key, vars = {}, fallback = '') =>
+    window.AnthemI18n?.t?.(key, vars, fallback) ?? fallback || key;
 
   const loading   = document.getElementById('leaderboard-loading');
   const errorEl   = document.getElementById('leaderboard-error');
@@ -80,7 +82,7 @@
 
       document.getElementById('leaderboard-total').textContent = data.total;
       document.getElementById('leaderboard-generated').textContent =
-        new Date(data.generated_at).toLocaleString();
+        new Date(data.generated_at).toLocaleString(window.AnthemI18n?.lang || undefined);
       show(stats);
 
       tbody.innerHTML = data.countries.map(renderRow).join('');
@@ -89,8 +91,8 @@
       console.error('Leaderboard fetch failed:', err);
       showError(
         API
-          ? `Could not reach the game API (${err.message}). Is it running?`
-          : 'Game API URL not configured.'
+          ? t('leaderboard_error_api_unreachable', { message: err.message })
+          : t('leaderboard_error_api_unconfigured')
       );
     }
   }

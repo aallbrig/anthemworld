@@ -13,6 +13,8 @@
   const GEOJSON_URL   = '/data/countries.geojson';
   // Must match FULL_LISTEN_MS in sam/game/functions/shared/elo.js
   const FULL_LISTEN_MS = 10_000;
+  const t = (key, vars = {}, fallback = '') =>
+    window.AnthemI18n?.t?.(key, vars, fallback) ?? fallback || key;
 
   // ─── localStorage helpers ──────────────────────────────────────────────────
   // Tracks which country anthems the user has heard in full (played to the end).
@@ -94,15 +96,20 @@
 
   async function apiFetch(path, options = {}) {
     try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept-Language': window.AnthemI18n?.lang || navigator.language || 'en',
+        ...(options.headers || {}),
+      };
       const res = await fetch(`${API}${path}`, {
-        headers: { 'Content-Type': 'application/json' },
         ...options,
+        headers,
       });
       const body = await res.json().catch(() => ({}));
       return { ok: res.ok, status: res.status, body };
     } catch (err) {
       // Network error (ECONNREFUSED, DNS failure, etc.)
-      return { ok: false, status: 0, body: { message: 'Network error — is the API server running?' } };
+      return { ok: false, status: 0, body: { message: t('game_network_error') } };
     }
   }
 
@@ -193,10 +200,13 @@
     barEl.classList.toggle('aw-bar-shimmer', full);
 
     if (full) {
-      statusEl.innerHTML = '✅ Full weight achieved!';
+      statusEl.innerHTML = t('game_full_weight');
       if (!wasAlreadyFull) triggerCardJuice(side);
     } else {
-      statusEl.innerHTML = `⏱ <span id="listen-timer-${side}">${(totalMs / 1000).toFixed(1)}</span>s heard`;
+      statusEl.innerHTML = t('game_listen_status_heard', {
+        side,
+        seconds: (totalMs / 1000).toFixed(1),
+      });
     }
 
     updateWeightHint();
@@ -275,7 +285,7 @@
       barEl.classList.add('aw-anthem-shimmer');
     }
     if (statusEl) {
-      statusEl.innerHTML = '🏅 Full anthem heard! Bonus ELO applied.';
+      statusEl.innerHTML = t('game_full_anthem_bonus');
       statusEl.className = 'text-warning fw-semibold small';
       if (!reducedMotion()) {
         statusEl.classList.add('animate__animated', 'animate__tada');
@@ -351,9 +361,9 @@
     show(hintEl);
 
     if (combined >= 100) {
-      liveEl.innerHTML = '🏆 Your vote carries <span class="text-success">full weight</span> this round!';
+      liveEl.innerHTML = t('game_weight_full_html');
     } else if (combined > 0) {
-      liveEl.innerHTML = `Current vote weight: <span class="text-warning">${combined}%</span> — keep listening to increase it.`;
+      liveEl.innerHTML = t('game_weight_partial_html', { weight: combined });
     } else {
       liveEl.innerHTML = '';
     }
@@ -414,13 +424,13 @@
   async function startSession() {
     hide(gameError);
     show(gameLoading);
-    sessionStatus.textContent = 'Creating session…';
+    sessionStatus.textContent = t('game_session_creating');
 
     // Check for stored session in sessionStorage
     const stored = sessionStorage.getItem('anthem_session_id');
     if (stored) {
       sessionId = stored;
-      sessionStatus.textContent = `Session: ${sessionId.slice(0, 8)}…`;
+      sessionStatus.textContent = t('game_session_label', { id: sessionId.slice(0, 8) });
       await loadMatchup();
       return;
     }
@@ -428,17 +438,17 @@
     const { ok, status, body } = await apiFetch('/session', { method: 'POST' });
 
     if (status === 429) {
-      showError('Too many sessions', body.message || 'Rate limit reached. Try again tomorrow.');
+      showError(t('game_error_too_many_sessions'), body.message || t('game_error_rate_limited'));
       return;
     }
     if (!ok) {
-      showError('Session error', body.message || 'Could not create session.');
+      showError(t('game_error_session'), body.message || t('game_error_create_session'));
       return;
     }
 
     sessionId = body.session_id;
     sessionStorage.setItem('anthem_session_id', sessionId);
-    sessionStatus.textContent = `Session: ${sessionId.slice(0, 8)}…`;
+    sessionStatus.textContent = t('game_session_label', { id: sessionId.slice(0, 8) });
     show(scoreBar);
     await loadMatchup();
   }
@@ -494,11 +504,11 @@
       return;
     }
     if (status === 429) {
-      showError('Vote limit reached', body.message || 'You have voted the maximum times for today.', null);
+      showError(t('game_error_vote_limit'), body.message || t('game_error_vote_limit_default'), null);
       return;
     }
     if (!ok) {
-      showError('Matchup error', body.message || 'Could not load matchup.', loadMatchup);
+      showError(t('game_error_matchup'), body.message || t('game_error_load_matchup'), loadMatchup);
       return;
     }
 
@@ -606,11 +616,11 @@
     });
 
     if (status === 429) {
-      showError('Vote limit reached', body.message, null);
+      showError(t('game_error_vote_limit'), body.message || t('game_error_vote_limit_default'), null);
       return;
     }
     if (!ok) {
-      showError('Vote error', body.message || 'Could not record vote.', loadMatchup);
+      showError(t('game_error_vote'), body.message || t('game_error_record_vote'), loadMatchup);
       return;
     }
 
@@ -622,10 +632,16 @@
     const weightPct  = Math.round((body.vote_weight || 0) * 100);
     const anthemBonus = body.anthem_bonus ? ' 🏅' : '';
     const weightNote = weightPct < 100
-      ? ` <small class="text-muted">(${weightPct}% weight — listen longer for full impact)</small>`
-      : anthemBonus ? ' <small class="text-warning">🏅 full anthem bonus applied!</small>' : '';
+      ? t('game_flash_weight_note', { weight: weightPct })
+      : anthemBonus ? t('game_flash_bonus_note') : '';
     showFlash('success',
-      `✅ Voted for <strong>${winnerName}</strong>! ELO: ${body.winner.old_elo} → ${body.winner.new_elo} (+${eloChange})${weightNote}`
+      t('game_flash_vote_success_html', {
+        winner: winnerName,
+        old: body.winner.old_elo,
+        new: body.winner.new_elo,
+        delta: eloChange,
+        note: weightNote,
+      })
     );
 
     // Reset maps to world view before next matchup loads

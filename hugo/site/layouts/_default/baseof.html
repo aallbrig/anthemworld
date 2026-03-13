@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ .Site.LanguageCode }}">
+<html lang="{{ .Site.Language.Lang | default .Site.LanguageCode }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,7 +16,9 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
     
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
+    
+    {{ partial "i18n-js.html" . }}
     
     {{ block "head" . }}{{ end }}
 </head>
@@ -46,7 +48,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
     <!-- Global audio controller (single anthem plays at a time) -->
-    <script src="/js/audio-controller.js"></script>
+    <script src="{{ "js/audio-controller.js" | relURL }}"></script>
     
     {{ block "scripts" . }}{{ end }}
 </body>

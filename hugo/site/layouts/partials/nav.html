@@ -1,27 +1,27 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container-fluid">
-        <a class="navbar-brand" href="/">
-            🌍 Anthem World
+        <a class="navbar-brand" href="{{ "" | relLangURL }}">
+            {{ i18n "nav_brand" }}
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="{{ i18n "nav_toggle" }}">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
-                    <a class="nav-link{{ if eq .RelPermalink "/" }} active{{ end }}" href="/">Home</a>
+                    <a class="nav-link{{ if eq .RelPermalink "/" }} active{{ end }}" href="{{ "" | relLangURL }}">{{ i18n "nav_home" }}</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ if eq .RelPermalink "/map/" }} active{{ end }}" href="/map/">Map</a>
+                    <a class="nav-link{{ if eq .RelPermalink "/map/" }} active{{ end }}" href="{{ "map/" | relLangURL }}">{{ i18n "nav_map" }}</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ if eq .RelPermalink "/countries/" }} active{{ end }}" href="/countries/">Countries</a>
+                    <a class="nav-link{{ if eq .RelPermalink "/countries/" }} active{{ end }}" href="{{ "countries/" | relLangURL }}">{{ i18n "nav_countries" }}</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ if eq .RelPermalink "/game/" }} active{{ end }}" href="/game/">🎵 Battle</a>
+                    <a class="nav-link{{ if eq .RelPermalink "/game/" }} active{{ end }}" href="{{ "game/" | relLangURL }}">{{ i18n "nav_game" }}</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{{ if eq .RelPermalink "/leaderboard/" }} active{{ end }}" href="/leaderboard/">🏆 Leaderboard</a>
+                    <a class="nav-link{{ if eq .RelPermalink "/leaderboard/" }} active{{ end }}" href="{{ "leaderboard/" | relLangURL }}">{{ i18n "nav_leaderboard" }}</a>
                 </li>
             </ul>
         </div>

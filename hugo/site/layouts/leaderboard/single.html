@@ -1,4 +1,4 @@
-{{ define "title" }}Anthem Leaderboard — {{ .Site.Title }}{{ end }}
+{{ define "title" }}{{ i18n "leaderboard_page_title" }} — {{ .Site.Title }}{{ end }}
 
 {{ define "main" }}
 <div class="container py-4" id="leaderboard-app">
@@ -6,56 +6,56 @@
   <!-- Header -->
   <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
     <div>
-      <h1 class="mb-0">🏆 Anthem Leaderboard</h1>
-      <p class="lead text-muted mb-0">Countries ranked by ELO score from community votes.</p>
+      <h1 class="mb-0">{{ i18n "leaderboard_heading" }}</h1>
+      <p class="lead text-muted mb-0">{{ i18n "leaderboard_lead" }}</p>
     </div>
-    <a href="/game/" class="btn btn-primary">🎵 Play Anthem Battle</a>
+    <a href="{{ "game/" | relLangURL }}" class="btn btn-primary">{{ i18n "leaderboard_play_button" }}</a>
   </div>
 
   <!-- Stats bar -->
   <div id="leaderboard-stats" class="d-none text-muted small mb-3">
-    <span class="me-3">Countries: <strong id="leaderboard-total">—</strong></span>
-    <span>Updated: <strong id="leaderboard-generated">—</strong></span>
+    <span class="me-3">{{ i18n "leaderboard_stats_countries" }} <strong id="leaderboard-total">—</strong></span>
+    <span>{{ i18n "leaderboard_stats_updated" }} <strong id="leaderboard-generated">—</strong></span>
   </div>
 
   <!-- Loading spinner -->
   <div id="leaderboard-loading" class="text-center py-5">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Loading…</span>
-    </div>
-    <p class="mt-2 text-muted">Loading rankings…</p>
+      <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">{{ i18n "game_loading" }}</span>
+      </div>
+    <p class="mt-2 text-muted">{{ i18n "leaderboard_loading" }}</p>
   </div>
 
   <!-- Error panel -->
   <div id="leaderboard-error" class="d-none alert alert-warning" role="alert">
-    <strong>Rankings unavailable.</strong><span id="leaderboard-error-msg"></span>
-    <button class="btn btn-sm btn-outline-warning ms-2" id="leaderboard-retry-btn">Retry</button>
+    <strong>{{ i18n "leaderboard_error_title" }}</strong><span id="leaderboard-error-msg"></span>
+    <button class="btn btn-sm btn-outline-warning ms-2" id="leaderboard-retry-btn">{{ i18n "leaderboard_retry" }}</button>
   </div>
 
   <!-- Limit selector + table -->
   <div id="leaderboard-table-wrap" class="d-none">
     <div class="d-flex align-items-center gap-2 mb-2">
-      <label for="leaderboard-limit" class="form-label mb-0 text-muted small">Show top</label>
+      <label for="leaderboard-limit" class="form-label mb-0 text-muted small">{{ i18n "leaderboard_show_top" }}</label>
       <select id="leaderboard-limit" class="form-select form-select-sm" style="width:auto">
         <option value="25">25</option>
         <option value="50" selected>50</option>
         <option value="100">100</option>
-        <option value="200">All</option>
+        <option value="200">{{ i18n "leaderboard_limit_all" }}</option>
       </select>
-      <span class="text-muted small">countries</span>
+      <span class="text-muted small">{{ i18n "leaderboard_countries_suffix" }}</span>
     </div>
 
     <div class="table-responsive">
       <table class="table table-striped table-hover align-middle">
         <thead class="table-dark">
           <tr>
-            <th class="text-center" style="width:3.5rem">#</th>
-            <th>Country</th>
-            <th>Anthem</th>
-            <th class="text-center">ELO</th>
-            <th class="text-center">Wins</th>
-            <th class="text-center">Losses</th>
-            <th class="text-center">Win %</th>
+            <th class="text-center" style="width:3.5rem">{{ i18n "leaderboard_column_rank" }}</th>
+            <th>{{ i18n "leaderboard_column_country" }}</th>
+            <th>{{ i18n "leaderboard_column_anthem" }}</th>
+            <th class="text-center">{{ i18n "leaderboard_column_elo" }}</th>
+            <th class="text-center">{{ i18n "leaderboard_column_wins" }}</th>
+            <th class="text-center">{{ i18n "leaderboard_column_losses" }}</th>
+            <th class="text-center">{{ i18n "leaderboard_column_win_pct" }}</th>
           </tr>
         </thead>
         <tbody id="leaderboard-tbody"></tbody>
@@ -65,7 +65,7 @@
 
   <!-- Empty state -->
   <div id="leaderboard-empty" class="d-none text-center py-5">
-    <p class="text-muted fs-5">No votes yet! <a href="/game/">Be the first to vote.</a></p>
+    <p class="text-muted fs-5">{{ i18n "leaderboard_empty_text" }} <a href="{{ "game/" | relLangURL }}">{{ i18n "leaderboard_empty_cta" }}</a></p>
   </div>
 
 </div>
@@ -80,5 +80,5 @@
     }
   })();
 </script>
-<script src="/js/leaderboard.js"></script>
+<script src="{{ "js/leaderboard.js" | relURL }}"></script>
 {{ end }}

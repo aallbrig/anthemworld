@@ -1,4 +1,4 @@
-{{ define "title" }}Anthem Battle — {{ .Site.Title }}{{ end }}
+{{ define "title" }}{{ i18n "game_page_title" }} — {{ .Site.Title }}{{ end }}
 
 {{ define "head" }}
 <!-- Animate.css — class-based animations for game juice -->
@@ -76,50 +76,50 @@
 
   <!-- Header -->
   <div class="text-center mb-4">
-    <h1 class="display-5">🎵 Anthem Battle</h1>
-    <p class="lead text-muted">Listen to two national anthems and vote for your favourite.</p>
-    <div id="session-status" class="text-muted small">Starting session…</div>
+    <h1 class="display-5">{{ i18n "game_heading" }}</h1>
+    <p class="lead text-muted">{{ i18n "game_lead" }}</p>
+    <div id="session-status" class="text-muted small">{{ i18n "game_session_starting" }}</div>
   </div>
 
   <!-- Score bar -->
   <div id="score-bar" class="d-none text-center mb-3">
-    <span class="badge bg-secondary me-2">Votes: <span id="vote-count">0</span></span>
-    <a href="/leaderboard/" class="btn btn-sm btn-outline-primary">🏆 Leaderboard</a>
+    <span class="badge bg-secondary me-2">{{ i18n "game_votes_label" }} <span id="vote-count">0</span></span>
+    <a href="{{ "leaderboard/" | relLangURL }}" class="btn btn-sm btn-outline-primary">{{ i18n "nav_leaderboard" }}</a>
     <button class="btn btn-sm btn-outline-secondary ms-1" type="button"
       data-bs-toggle="collapse" data-bs-target="#how-it-works" aria-expanded="false">
-      ❓ How it works
+      {{ i18n "game_how_it_works_button" }}
     </button>
   </div>
 
   <!-- How it works (collapsed) -->
   <div class="collapse mb-3" id="how-it-works">
     <div class="card card-body mx-auto text-start" style="max-width:640px">
-      <h6 class="fw-bold mb-2">How Anthem Battle works</h6>
+      <h6 class="fw-bold mb-2">{{ i18n "game_how_it_works_heading" }}</h6>
       <ul class="mb-2 small">
-        <li><strong>Listen first:</strong> Listen to each anthem for at least <strong>10 seconds</strong> for your vote to carry full weight. The more you listen, the stronger your vote.</li>
-        <li><strong>Full anthem bonus:</strong> A second orange bar appears once you hit 10 s. Listen to the <em>entire</em> anthem for a bonus ELO multiplier (up to +50% combined when both are fully heard). Totally optional — the bonus is yours if you want it.</li>
-        <li><strong>Vote:</strong> Click "Vote for this anthem" to declare a winner. The other anthem gets a loss.</li>
-        <li><strong>ELO ratings:</strong> Wins and losses update each country's ELO score (starting at 1500, K=32). A win against a higher-rated country earns more points.</li>
-        <li><strong>Wildcard:</strong> Occasionally a lower-ranked anthem is matched against a higher-ranked one — upsets are worth more.</li>
-        <li><strong>Skip:</strong> Not feeling it? Skip the matchup and get a fresh pair.</li>
+        <li>{{ i18n "game_rule_listen_html" | safeHTML }}</li>
+        <li>{{ i18n "game_rule_bonus_html" | safeHTML }}</li>
+        <li>{{ i18n "game_rule_vote_html" | safeHTML }}</li>
+        <li>{{ i18n "game_rule_elo_html" | safeHTML }}</li>
+        <li>{{ i18n "game_rule_wildcard_html" | safeHTML }}</li>
+        <li>{{ i18n "game_rule_skip_html" | safeHTML }}</li>
       </ul>
-      <p class="mb-0 small text-muted">Your session is stored in this browser tab. Votes are anonymous.</p>
+      <p class="mb-0 small text-muted">{{ i18n "game_session_note" }}</p>
     </div>
   </div>
 
   <!-- Loading spinner -->
   <div id="game-loading" class="text-center py-5">
     <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Loading…</span>
+      <span class="visually-hidden">{{ i18n "game_loading" }}</span>
     </div>
-    <p class="mt-2 text-muted">Fetching matchup…</p>
+    <p class="mt-2 text-muted">{{ i18n "game_fetching_matchup" }}</p>
   </div>
 
   <!-- Error panel -->
   <div id="game-error" class="d-none alert alert-danger mx-auto" style="max-width:600px" role="alert">
-    <strong id="game-error-title">Error</strong>
+    <strong id="game-error-title">{{ i18n "game_error_title" }}</strong>
     <p id="game-error-msg" class="mb-0"></p>
-    <button class="btn btn-sm btn-outline-danger mt-2" id="game-retry-btn">Try again</button>
+    <button class="btn btn-sm btn-outline-danger mt-2" id="game-retry-btn">{{ i18n "game_try_again" }}</button>
   </div>
 
   <!-- Matchup -->
@@ -130,30 +130,30 @@
       <div class="card h-100 shadow-sm" id="card-a">
         <div id="map-a" style="height:200px; border-radius:0.375rem 0.375rem 0 0; overflow:hidden;"></div>
         <div class="card-body text-center">
-          <img id="flag-a" src="" alt="Flag" class="mb-2" style="height:60px; object-fit:contain;">
+          <img id="flag-a" src="" alt="{{ i18n "game_flag_alt" }}" class="mb-2" style="height:60px; object-fit:contain;">
           <h4 id="name-a" class="card-title"></h4>
           <p id="anthem-a" class="text-muted small mb-2"></p>
           <audio id="audio-a" controls class="w-100 mb-2" preload="none"></audio>
           <div id="listen-indicator-a" class="text-muted small mb-2 d-none">
-            <div class="progress mb-1" style="height:6px;" title="Listen progress toward full vote weight">
+            <div class="progress mb-1" style="height:6px;" title="{{ i18n "game_listen_progress_title" }}">
               <div id="listen-bar-a" class="progress-bar" role="progressbar" style="width:0%"></div>
             </div>
-            <span id="listen-status-a">⏱ <span id="listen-timer-a">0</span>s heard</span>
+            <span id="listen-status-a">⏱ <span id="listen-timer-a">0</span>{{ i18n "game_seconds_heard_suffix" }}</span>
             <!-- Bonus bar: hidden until first bar (10 s) completes -->
             <div id="anthem-indicator-a" class="d-none mt-1">
-              <div class="progress mb-1" style="height:4px;" title="Bonus: listen to the full anthem for extra ELO weight">
+              <div class="progress mb-1" style="height:4px;" title="{{ i18n "game_bonus_progress_title" }}">
                 <div id="anthem-bar-a" class="progress-bar bg-warning" role="progressbar" style="width:0%"></div>
               </div>
-              <span id="anthem-status-a" class="text-warning small">🎵 <span id="anthem-pct-a">0</span>% — bonus ELO if you hear the whole anthem!</span>
+              <span id="anthem-status-a" class="text-warning small">🎵 <span id="anthem-pct-a">0</span>% {{ i18n "game_bonus_suffix" }}</span>
             </div>
           </div>
           <div class="mt-2">
-            <span class="badge bg-light text-dark border">ELO: <span id="elo-a">—</span></span>
+            <span class="badge bg-light text-dark border">{{ i18n "game_elo_label" }} <span id="elo-a">—</span></span>
           </div>
         </div>
         <div class="card-footer text-center">
           <button class="btn btn-success btn-lg w-100" id="vote-a-btn" disabled>
-            👍 Vote for this anthem
+            {{ i18n "game_vote_button" }}
           </button>
         </div>
       </div>
@@ -162,8 +162,8 @@
     <!-- VS divider -->
     <div class="col-md-1 d-flex align-items-center justify-content-center">
       <div class="text-center">
-        <div id="vs-text" class="display-6 text-muted fw-bold">VS</div>
-        <div id="wildcard-badge" class="badge bg-warning text-dark d-none mt-1">🎲 Wildcard</div>
+        <div id="vs-text" class="display-6 text-muted fw-bold">{{ i18n "game_vs" }}</div>
+        <div id="wildcard-badge" class="badge bg-warning text-dark d-none mt-1">{{ i18n "game_wildcard_badge" }}</div>
       </div>
     </div>
 
@@ -172,30 +172,30 @@
       <div class="card h-100 shadow-sm" id="card-b">
         <div id="map-b" style="height:200px; border-radius:0.375rem 0.375rem 0 0; overflow:hidden;"></div>
         <div class="card-body text-center">
-          <img id="flag-b" src="" alt="Flag" class="mb-2" style="height:60px; object-fit:contain;">
+          <img id="flag-b" src="" alt="{{ i18n "game_flag_alt" }}" class="mb-2" style="height:60px; object-fit:contain;">
           <h4 id="name-b" class="card-title"></h4>
           <p id="anthem-b" class="text-muted small mb-2"></p>
           <audio id="audio-b" controls class="w-100 mb-2" preload="none"></audio>
           <div id="listen-indicator-b" class="text-muted small mb-2 d-none">
-            <div class="progress mb-1" style="height:6px;" title="Listen progress toward full vote weight">
+            <div class="progress mb-1" style="height:6px;" title="{{ i18n "game_listen_progress_title" }}">
               <div id="listen-bar-b" class="progress-bar" role="progressbar" style="width:0%"></div>
             </div>
-            <span id="listen-status-b">⏱ <span id="listen-timer-b">0</span>s heard</span>
+            <span id="listen-status-b">⏱ <span id="listen-timer-b">0</span>{{ i18n "game_seconds_heard_suffix" }}</span>
             <!-- Bonus bar: hidden until first bar (10 s) completes -->
             <div id="anthem-indicator-b" class="d-none mt-1">
-              <div class="progress mb-1" style="height:4px;" title="Bonus: listen to the full anthem for extra ELO weight">
+              <div class="progress mb-1" style="height:4px;" title="{{ i18n "game_bonus_progress_title" }}">
                 <div id="anthem-bar-b" class="progress-bar bg-warning" role="progressbar" style="width:0%"></div>
               </div>
-              <span id="anthem-status-b" class="text-warning small">🎵 <span id="anthem-pct-b">0</span>% — bonus ELO if you hear the whole anthem!</span>
+              <span id="anthem-status-b" class="text-warning small">🎵 <span id="anthem-pct-b">0</span>% {{ i18n "game_bonus_suffix" }}</span>
             </div>
           </div>
           <div class="mt-2">
-            <span class="badge bg-light text-dark border">ELO: <span id="elo-b">—</span></span>
+            <span class="badge bg-light text-dark border">{{ i18n "game_elo_label" }} <span id="elo-b">—</span></span>
           </div>
         </div>
         <div class="card-footer text-center">
           <button class="btn btn-success btn-lg w-100" id="vote-b-btn" disabled>
-            👍 Vote for this anthem
+            {{ i18n "game_vote_button" }}
           </button>
         </div>
       </div>
@@ -210,15 +210,14 @@
 
   <!-- Skip button -->
   <div id="skip-area" class="d-none text-center mt-3">
-    <button class="btn btn-outline-secondary btn-sm" id="skip-btn">⏭ Skip this matchup</button>
+    <button class="btn btn-outline-secondary btn-sm" id="skip-btn">{{ i18n "game_skip_button" }}</button>
   </div>
 
   <!-- Listen weight hint -->
   <div id="weight-hint" class="d-none mt-4 mb-2">
     <div id="weight-hint-inner" class="card border-0 bg-light mx-auto" style="max-width:560px;">
       <div class="card-body py-2 px-3 text-center small text-muted">
-        🎧 Listen to at least <strong>10 seconds</strong> of each anthem for your vote to carry
-        full weight. The more you listen, the more your opinion counts.
+        {{ i18n "game_weight_hint_html" | safeHTML }}
         <div id="weight-live" class="mt-1 fw-semibold"></div>
       </div>
     </div>
@@ -236,7 +235,7 @@
     }
   })();
 </script>
-<script src="/js/country-map.js"></script>
-<script src="/js/audio-controller.js"></script>
-<script src="/js/game.js"></script>
+<script src="{{ "js/country-map.js" | relURL }}"></script>
+<script src="{{ "js/audio-controller.js" | relURL }}"></script>
+<script src="{{ "js/game.js" | relURL }}"></script>
 {{ end }}

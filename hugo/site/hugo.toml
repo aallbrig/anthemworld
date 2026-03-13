@@ -1,6 +1,14 @@
 baseURL = 'http://localhost:1313/'
 languageCode = 'en-us'
+defaultContentLanguage = 'en'
+defaultContentLanguageInSubdir = false
 title = 'Anthem World - National Anthems of the World'
+
+[languages]
+  [languages.en]
+    languageCode = 'en-us'
+    languageName = 'English'
+    weight = 1
 
 [params]
   description = "Explore the national anthems of all 193 UN-recognized countries through an interactive world map"

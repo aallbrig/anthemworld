@@ -6,6 +6,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+function t(key, vars = {}, fallback = '') {
+    return window.AnthemI18n?.t?.(key, vars, fallback) ?? fallback || key;
+}
+
 function initCountriesTable() {
     fetch('/data/anthems.json')
         .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
@@ -55,29 +59,29 @@ function renderTable(data) {
     }
 
     const noDataMsg = data
-        ? 'No anthem data found. Try: <code>anthemworld data download rest-countries-api wikidata-sparql && anthemworld data format --output hugo/site/static/data</code>'
-        : 'anthem data not found. Run <code>anthemworld data format --output hugo/site/static/data</code> to generate it.';
+        ? t('countries_data_missing_html')
+        : t('countries_data_not_generated_html');
 
     const table = $('#countries-table').DataTable({
         data: rows,
         columns: [
-            { title: "Flag",        visible: false },   // 0 - hidden, drives render
-            { title: "Country",     render: (d, t, row) => {
+            { title: t('countries_column_flag'),        visible: false },   // 0 - hidden, drives render
+            { title: t('countries_column_country'),     render: (d, t, row) => {
                 const flag = row[0]
                     ? `<img src="${row[0]}" alt="" style="height:18px;vertical-align:middle;margin-right:6px;" onerror="this.style.display='none'">`
                     : '';
                 return flag + d;
             }},
-            { title: "National Anthem", render: (d, t, row) => {
+            { title: t('countries_column_national_anthem'), render: (d, t, row) => {
                 const en = row[2];
                 return en ? `${d} <span class="text-muted small">(${en})</span>` : d;
             }},
-            { title: "English Title", visible: false }, // 3 - included in Anthem col
-            { title: "Adopted",     defaultContent: '—' },
-            { title: "Composer",    defaultContent: '—', render: d => d || '—' },
-            { title: "Region" },
-            { title: "Audio",       orderable: false, render: (d, t, row) => {
-                if (!d) return '<span class="badge bg-secondary">None</span>';
+            { title: t('countries_column_english_title'), visible: false }, // 3 - included in Anthem col
+            { title: t('countries_column_adopted'),     defaultContent: '—' },
+            { title: t('countries_column_composer'),    defaultContent: '—', render: d => d || '—' },
+            { title: t('countries_column_region') },
+            { title: t('countries_column_audio'),       orderable: false, render: (d, t, row) => {
+                if (!d) return `<span class="badge bg-secondary">${t('countries_badge_none')}</span>`;
                 const fmt = row[8] || 'ogg';
                 const mime = window.AudioController?.mime?.(fmt)
                     || (fmt === 'mp3' ? 'audio/mpeg' : fmt === 'wav' ? 'audio/wav' : 'audio/ogg');
@@ -85,17 +89,17 @@ function renderTable(data) {
                     <source src="${d}" type="${mime}">
                 </audio>`;
             }},
-            { title: "Audio Format", visible: false },  // 8 - used by Audio render
+            { title: t('countries_column_audio_format'), visible: false },  // 8 - used by Audio render
         ],
         pageLength: 25,
-        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, t('datatable_all')]],
         order: [[1, 'asc']],
         language: {
-            search: "Search:",
-            lengthMenu: "Show _MENU_ per page",
-            info: "Showing _START_ to _END_ of _TOTAL_ countries",
-            infoEmpty: "No countries found",
-            infoFiltered: "(filtered from _MAX_ total)",
+            search: t('datatable_search'),
+            lengthMenu: t('datatable_length_menu'),
+            info: t('datatable_info'),
+            infoEmpty: t('datatable_info_empty'),
+            infoFiltered: t('datatable_info_filtered'),
             zeroRecords: noDataMsg,
         },
         responsive: true,
@@ -111,7 +115,7 @@ function renderTable(data) {
     if (!data || rows.length === 0) {
         $('#countries-table_wrapper').before(
             '<div class="alert alert-warning mb-3">' +
-            '<strong>No data yet.</strong> ' + noDataMsg +
+            `<strong>${t('countries_no_data_title')}</strong> ` + noDataMsg +
             '</div>'
         );
     } else {
@@ -119,11 +123,8 @@ function renderTable(data) {
         const withAudio  = rows.filter(r => r[7]).length;
         $('#countries-table_wrapper').before(
             `<div class="alert alert-info mb-3">` +
-            `<strong>${rows.length}</strong> countries loaded &mdash; ` +
-            `<strong>${withAnthem}</strong> with anthem data, ` +
-            `<strong>${withAudio}</strong> with audio` +
+            t('countries_summary_html', { rows: rows.length, withAnthem, withAudio }) +
             `</div>`
         );
     }
 }
-

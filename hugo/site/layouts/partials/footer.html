@@ -2,30 +2,30 @@
     <div class="container">
         <div class="row">
             <div class="col-md-6">
-                <h5>Anthem World</h5>
-                <p class="text-muted">Explore the national anthems of 193 UN-recognized countries.</p>
+                <h5>{{ i18n "footer_title" }}</h5>
+                <p class="text-muted">{{ i18n "footer_tagline" }}</p>
             </div>
             <div class="col-md-3">
-                <h6>Quick Links</h6>
+                <h6>{{ i18n "footer_quick_links" }}</h6>
                 <ul class="list-unstyled">
-                    <li><a href="/" class="text-muted text-decoration-none">Home</a></li>
-                    <li><a href="/map/" class="text-muted text-decoration-none">Interactive Map</a></li>
-                    <li><a href="/countries/" class="text-muted text-decoration-none">Countries Table</a></li>
+                    <li><a href="{{ "" | relLangURL }}" class="text-muted text-decoration-none">{{ i18n "nav_home" }}</a></li>
+                    <li><a href="{{ "map/" | relLangURL }}" class="text-muted text-decoration-none">{{ i18n "footer_interactive_map" }}</a></li>
+                    <li><a href="{{ "countries/" | relLangURL }}" class="text-muted text-decoration-none">{{ i18n "footer_countries_table" }}</a></li>
                 </ul>
             </div>
             <div class="col-md-3">
-                <h6>Share This Page</h6>
+                <h6>{{ i18n "footer_share_title" }}</h6>
                 <div id="qrcode-container"></div>
-                <p class="text-muted small mt-2">Scan to share: <span id="current-url" class="text-break">{{ .Permalink }}</span></p>
+                <p class="text-muted small mt-2">{{ i18n "footer_share_scan" }} <span id="current-url" class="text-break">{{ .Permalink }}</span></p>
             </div>
         </div>
         <hr class="bg-secondary">
         <div class="row">
             <div class="col-12 text-center">
-                <p class="mb-0 text-muted">&copy; 2026 Anthem World. Data sources: REST Countries API, Wikidata, Wikimedia Commons.</p>
+                <p class="mb-0 text-muted">{{ i18n "footer_copyright" | safeHTML }}</p>
             </div>
         </div>
     </div>
 </footer>
 
-<script src="/js/qrcode-widget.js"></script>
+<script src="{{ "js/qrcode-widget.js" | relURL }}"></script>
