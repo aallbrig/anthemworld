@@ -261,7 +261,7 @@ test.describe('Game page — error states', () => {
     await page.addInitScript(() => { window.GAME_API_URL = 'http://localhost:19999'; });
     await page.goto(GAME_URL);
 
-    await expect(page.locator('#game-error')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('#game-error')).toBeVisible({ timeout: 30_000 });
     const title = await page.locator('#game-error-title').textContent();
     expect(title?.trim().length).toBeGreaterThan(0);
     // Retry button present

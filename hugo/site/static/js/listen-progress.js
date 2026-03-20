@@ -187,6 +187,10 @@
     store[countryId] = merged;
     saveStore(store);
     syncLegacy(merged);
+    // Queue for server sync when meaningful listen data changes
+    if (update.add_listen_ms > 0 || update.heard_full_weight || update.heard_full_anthem) {
+      queueSync(countryId);
+    }
     return merged;
   }
 
@@ -339,6 +343,83 @@
     } catch (_) {}
   }
 
+  // ─── Server sync ───────────────────────────────────────────────────────────
+  const SYNC_DEBOUNCE_MS = 3000;
+  let _syncTimer = null;
+  let _pendingSync = new Set(); // country IDs queued for sync
+
+  function getApiBase() {
+    return (global.GAME_API_URL || '').replace(/\/$/, '');
+  }
+
+  /**
+   * Queue a country for server sync (debounced).
+   */
+  function queueSync(countryId) {
+    const key = upperCountryId(countryId);
+    if (!key) return;
+    _pendingSync.add(key);
+    if (_syncTimer) clearTimeout(_syncTimer);
+    _syncTimer = setTimeout(flushSync, SYNC_DEBOUNCE_MS);
+  }
+
+  /**
+   * Immediately flush all pending listen data to POST /listen.
+   * Uses sendBeacon on page unload for reliability, fetch otherwise.
+   */
+  function flushSync(useSendBeacon) {
+    if (_syncTimer) { clearTimeout(_syncTimer); _syncTimer = null; }
+    if (_pendingSync.size === 0) return;
+
+    const apiBase = getApiBase();
+    const sessionId = global.AnthemSession?.getSessionId?.();
+    if (!apiBase || !sessionId) return;
+
+    const store = loadStore();
+    const events = [];
+    for (const countryId of _pendingSync) {
+      const record = store[countryId];
+      if (!record) continue;
+      events.push({
+        country_id: countryId,
+        total_listen_ms: record.total_listen_ms || 0,
+        max_position_ms: record.max_position_ms || 0,
+        duration_ms: record.duration_ms || 0,
+        heard_full_weight: !!record.heard_full_weight,
+        heard_full_anthem: !!record.heard_full_anthem,
+      });
+    }
+    _pendingSync.clear();
+
+    if (events.length === 0) return;
+
+    const payload = JSON.stringify({ session_id: sessionId, events });
+
+    if (useSendBeacon && global.navigator?.sendBeacon) {
+      global.navigator.sendBeacon(
+        `${apiBase}/listen`,
+        new Blob([payload], { type: 'application/json' })
+      );
+      return;
+    }
+
+    // Fire-and-forget fetch
+    fetch(`${apiBase}/listen`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      keepalive: true,
+    }).catch(() => {});
+  }
+
+  // Sync on page unload (reliable delivery via sendBeacon)
+  if (global.addEventListener) {
+    global.addEventListener('visibilitychange', () => {
+      if (global.document?.visibilityState === 'hidden') flushSync(true);
+    });
+    global.addEventListener('pagehide', () => flushSync(true));
+  }
+
   const api = {
     STORAGE_KEY,
     FULL_WEIGHT_MS,
@@ -353,6 +434,8 @@
     mergeProgressRecord,
     progressPercent,
     effectiveListenMs,
+    queueSync,
+    flushSync,
   };
 
   global.ListenProgress = api;

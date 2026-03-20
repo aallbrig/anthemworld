@@ -119,6 +119,25 @@ Resources:
         - DynamoDBReadPolicy:
             TableName: !Ref RankingsTable
 
+  ListenFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: listen/index.handler
+      Description: Ingest client-side listen progress events
+      Events:
+        PostListen:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameApi
+            Path: /listen
+            Method: POST
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref SessionsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ListenHistoryTable
+
   # ── DynamoDB Tables ─────────────────────────────────────────────────────────
   RankingsTable:
     Type: AWS::DynamoDB::Table

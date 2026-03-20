@@ -448,8 +448,8 @@
     show(gameLoading);
     sessionStatus.textContent = t('game_session_creating');
 
-    // Check for stored session in sessionStorage
-    const stored = sessionStorage.getItem('anthem_session_id');
+    // Use site-wide session manager (localStorage-backed)
+    const stored = window.AnthemSession?.getSessionId();
     if (stored) {
       sessionId = stored;
       sessionStatus.textContent = t('game_session_label', { id: sessionId.slice(0, 8) });
@@ -457,19 +457,29 @@
       return;
     }
 
-    const { ok, status, body } = await apiFetch('/session', { method: 'POST' });
+    // Create session via session manager
+    const newId = await window.AnthemSession?.ensureSession();
+    if (!newId) {
+      // Fallback: try direct API call (session-manager may not be loaded)
+      const { ok, status, body } = await apiFetch('/session', { method: 'POST' });
 
-    if (status === 429) {
-      showError(t('game_error_too_many_sessions'), body.message || t('game_error_rate_limited'));
-      return;
-    }
-    if (!ok) {
-      showError(t('game_error_session'), body.message || t('game_error_create_session'));
-      return;
+      if (status === 429) {
+        showError(t('game_error_too_many_sessions'), body.message || t('game_error_rate_limited'));
+        return;
+      }
+      if (!ok) {
+        showError(t('game_error_session'), body.message || t('game_error_create_session'));
+        return;
+      }
+
+      sessionId = body.session_id;
+      try { localStorage.setItem('aw_session', JSON.stringify({
+        session_id: sessionId, created_at: body.created_at || new Date().toISOString()
+      })); } catch (_) {}
+    } else {
+      sessionId = newId;
     }
 
-    sessionId = body.session_id;
-    sessionStorage.setItem('anthem_session_id', sessionId);
     sessionStatus.textContent = t('game_session_label', { id: sessionId.slice(0, 8) });
     show(scoreBar);
     await loadMatchup();
@@ -520,7 +530,7 @@
 
     if (status === 403) {
       // Session expired — clear and restart
-      sessionStorage.removeItem('anthem_session_id');
+      window.AnthemSession?.clearSession();
       sessionId = null;
       await startSession();
       return;

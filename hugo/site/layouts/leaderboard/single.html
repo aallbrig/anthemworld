@@ -72,13 +72,6 @@
 {{ end }}
 
 {{ define "scripts" }}
-<script>
-  (function() {
-    if (!window.GAME_API_URL) {
-      const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      window.GAME_API_URL = isLocal ? 'http://localhost:3001' : '';
-    }
-  })();
-</script>
+<!-- GAME_API_URL is set globally in baseof.html -->
 <script src="{{ "js/leaderboard.js" | relURL }}"></script>
 {{ end }}

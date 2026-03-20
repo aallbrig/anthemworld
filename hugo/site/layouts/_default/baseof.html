@@ -81,6 +81,17 @@
     <!-- QRCode.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
+    <!-- Game API base URL (set from Hugo params, overridable in config.local.toml) -->
+    <script>
+      if (typeof window.GAME_API_URL === 'undefined' || window.GAME_API_URL === null) {
+        window.GAME_API_URL = {{ with .Site.Params.gameApiBase }}{{ . | safeJS | printf "%q" }}{{ else }}""{{ end }};
+        if (!window.GAME_API_URL) {
+          var isLocal = /^(localhost|127\.0\.0\.1)/.test(window.location.hostname);
+          window.GAME_API_URL = isLocal ? 'http://localhost:3001' : '';
+        }
+      }
+    </script>
+
     <!-- Browser-local anthem listening credit -->
     <script src="{{ "js/listen-progress.js" | relURL }}"></script>
 
@@ -89,6 +100,9 @@
 
     <!-- Shared anthem audio widget -->
     <script src="{{ "js/anthem-audio-widget.js" | relURL }}"></script>
+
+    <!-- Site-wide session management (auto-creates on first visit) -->
+    <script src="{{ "js/session-manager.js" | relURL }}"></script>
     
     {{ block "scripts" . }}{{ end }}
 </body>
