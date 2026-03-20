@@ -37,19 +37,19 @@ Then open:
 
 ```bash
 # Build the CLI
-go build -o worldanthem ./cli/worldanthem
+make build
 
 # Check status of all data sources
-./worldanthem data sources
+anthemworld data sources
 
 # Download all data (REST Countries, Wikidata, Wikimedia Commons, Factbook)
-./worldanthem data download
+anthemworld data download
 
 # Export JSON files for the website
-./worldanthem data format --output hugo/site/static/data
+anthemworld data format --output hugo/site/static/data
 
 # Show version + git hash
-./worldanthem version
+anthemworld version
 ```
 
 **Database location:** `~/.local/share/anthemworld/data.db`
@@ -72,7 +72,7 @@ Tests automatically start/stop a Hugo dev server. All 32 tests should pass.
 
 ### CLI unit tests
 ```bash
-go test ./cli/worldanthem/... -v
+cd cli/anthemworld && go test ./... -v
 ```
 
 ### Game API unit tests
@@ -84,13 +84,13 @@ cd sam/game && npm test
 
 ```
 anthemworld/
-├── worldanthem             # CLI binary (built with `go build`)
+├── anthemworld             # CLI binary (built with `make build`)
 ├── hugo/site/              # Website (Hugo)
 │   ├── content/            # Pages (Markdown)
 │   ├── layouts/            # Templates (HTML)
 │   └── static/             # Assets (JS, CSS, data JSON)
 │       └── data/           # anthems.json, countries.json (generated)
-├── cli/worldanthem/        # CLI source (Go)
+├── cli/anthemworld/        # CLI source (Go)
 │   └── cmd/                # Commands (data, version, status…)
 ├── sam/game/               # Game backend (AWS SAM / Lambda)
 │   ├── functions/          # session, matchup, vote, leaderboard
@@ -122,15 +122,15 @@ make dev                          # Start LocalStack + SAM + Hugo
 hugo server -s hugo/site -D       # Hugo dev server → http://localhost:1313
 
 # === CLI ===
-go build -o worldanthem ./cli/worldanthem
-./worldanthem data sources        # Check data source health
-./worldanthem data download       # Download all data (idempotent)
-./worldanthem data format --output hugo/site/static/data
-./worldanthem version             # Show version + git hash
+make build                            # Build CLI
+anthemworld data sources        # Check data source health
+anthemworld data download       # Download all data (idempotent)
+anthemworld data format --output hugo/site/static/data
+anthemworld version             # Show version + git hash
 
 # === Tests ===
 cd tests/playwright && npm test   # 32 Playwright tests (auto-starts Hugo)
-go test ./cli/worldanthem/...     # CLI unit tests
+cd cli/anthemworld && go test ./...  # CLI unit tests
 cd sam/game && npm test           # Game API unit tests (10 tests)
 ```
 
@@ -165,7 +165,7 @@ cd sam/game && npm test           # Game API unit tests (10 tests)
 
 
 - Ensure `hugo/site/static/data/anthems.json` exists: `ls -lh hugo/site/static/data/`
-- If missing: `./worldanthem data format --output hugo/site/static/data`
+- If missing: `anthemworld data format --output hugo/site/static/data`
 
 **Countries table shows 0 rows?**
 - Same — requires `hugo/site/static/data/countries.json`
@@ -180,7 +180,7 @@ cd sam/game && npm test           # Game API unit tests (10 tests)
 
 **Database issues?**
 - Location: `~/.local/share/anthemworld/data.db`
-- Reset: `rm ~/.local/share/anthemworld/data.db` then `./worldanthem data download`
+- Reset: `rm ~/.local/share/anthemworld/data.db` then `anthemworld data download`
 
 ## ⚠️ AWS Deployment Notes
 

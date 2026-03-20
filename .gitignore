@@ -1,5 +1,6 @@
 # build cli @ root of repo
 worldanthem
+anthemworld
 bin/
 # jetbrains ides ftw
 .idea

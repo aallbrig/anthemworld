@@ -268,3 +268,48 @@ test.describe('Game page — error states', () => {
     await expect(page.locator('#game-retry-btn')).toBeVisible();
   });
 });
+
+test.describe('Game page — unmappable matchup recovery', () => {
+  test('skips an unmappable matchup and renders the next valid one', async ({ page }) => {
+    test.setTimeout(30_000);
+    let matchupCount = 0;
+
+    await page.route('http://localhost:3001/session', async route => {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ session_id: 'test-session-1' }),
+      });
+    });
+
+    await page.route('http://localhost:3001/matchup?session_id=test-session-1', async route => {
+      matchupCount += 1;
+      const body = matchupCount === 1
+        ? {
+            matchup_id: 'bad-1',
+            country_a: { country_id: 'SGP', name: 'Singapore', anthem_name: 'Majulah Singapura', elo_score: 1500, flag_url: '', audio_url: '', listen_ms: 0 },
+            country_b: { country_id: 'SUR', name: 'Suriname', anthem_name: 'God zij met ons Suriname', elo_score: 1500, flag_url: '', audio_url: '', listen_ms: 0 },
+            is_wildcard: false,
+          }
+        : {
+            matchup_id: 'good-1',
+            country_a: { country_id: 'FRA', name: 'France', anthem_name: 'La Marseillaise', elo_score: 1500, flag_url: '', audio_url: '', listen_ms: 0 },
+            country_b: { country_id: 'DEU', name: 'Germany', anthem_name: 'Deutschlandlied', elo_score: 1500, flag_url: '', audio_url: '', listen_ms: 0 },
+            is_wildcard: false,
+          };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(body),
+      });
+    });
+
+    await page.goto(GAME_URL, { waitUntil: 'domcontentloaded' });
+    await waitForMatchup(page);
+
+    await expect(page.locator('#name-a')).toHaveText('France');
+    await expect(page.locator('#name-b')).toHaveText('Germany');
+    expect(matchupCount).toBeGreaterThanOrEqual(2);
+    await expect(page.locator('#game-loading')).toBeHidden();
+  });
+});

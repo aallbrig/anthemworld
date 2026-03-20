@@ -64,8 +64,9 @@ type IndexRecord struct {
 
 // ExportToDir queries the database and writes JSON files to outputDir.
 // It creates the following files:
-//   - anthems.json  — all countries indexed by ISO alpha-3, including anthem + audio
-//   - index.json    — manifest with stats
+//   - anthems.json       — all countries indexed by ISO alpha-3, including anthem + audio
+//   - countries.geojson  — GeoJSON FeatureCollection of country boundaries
+//   - index.json         — manifest with stats
 func ExportToDir(db *sql.DB, outputDir string) error {
 	countries, err := queryCountries(db)
 	if err != nil {
@@ -104,14 +105,27 @@ func ExportToDir(db *sql.DB, outputDir string) error {
 		totalAudio += len(c.AudioFiles)
 	}
 
+	// Write countries.geojson
+	geoPath := filepath.Join(outputDir, "countries.geojson")
+	geoCount, err := exportGeoJSON(db, geoPath)
+	if err != nil {
+		// Non-fatal: geojson table may not be populated yet
+		fmt.Printf("  ⚠ GeoJSON export skipped: %v\n", err)
+		geoCount = 0
+	}
+
 	// Write index.json
+	files := []string{"anthems.json", "index.json"}
+	if geoCount > 0 {
+		files = append(files, "countries.geojson")
+	}
 	idx := IndexRecord{
 		GeneratedAt:    time.Now().UTC().Format(time.RFC3339),
 		TotalCountries: len(indexed),
 		TotalAnthems:   totalAnthems,
 		TotalAudio:     totalAudio,
 		WithHistory:    withHistory,
-		Files:          []string{"anthems.json", "index.json"},
+		Files:          files,
 	}
 	indexPath := filepath.Join(outputDir, "index.json")
 	if err := writeJSON(indexPath, idx); err != nil {
@@ -120,9 +134,74 @@ func ExportToDir(db *sql.DB, outputDir string) error {
 
 	fmt.Printf("  ✓ %d countries, %d anthems, %d audio files, %d with history\n",
 		len(indexed), totalAnthems, totalAudio, withHistory)
+	if geoCount > 0 {
+		fmt.Printf("  ✓ %d GeoJSON features\n", geoCount)
+	}
 	fmt.Printf("  → %s\n", anthemsPath)
+	if geoCount > 0 {
+		fmt.Printf("  → %s\n", geoPath)
+	}
 	fmt.Printf("  → %s\n", indexPath)
 	return nil
+}
+
+// geoJSONFeature is a minimal GeoJSON feature for serialization.
+type geoJSONFeature struct {
+	Type       string                 `json:"type"`
+	ID         string                 `json:"id"`
+	Properties map[string]interface{} `json:"properties"`
+	Geometry   json.RawMessage        `json:"geometry"`
+}
+
+// geoJSONCollection is a minimal GeoJSON FeatureCollection for serialization.
+type geoJSONCollection struct {
+	Type     string           `json:"type"`
+	Features []geoJSONFeature `json:"features"`
+}
+
+// exportGeoJSON reconstructs countries.geojson from the geojson_countries table.
+// Returns the number of features written, or an error.
+func exportGeoJSON(db *sql.DB, path string) (int, error) {
+	rows, err := db.Query(`
+		SELECT iso_code, name, feature_type, geometry
+		FROM geojson_countries
+		ORDER BY iso_code
+	`)
+	if err != nil {
+		return 0, fmt.Errorf("querying geojson_countries: %w", err)
+	}
+	defer rows.Close()
+
+	var features []geoJSONFeature
+	for rows.Next() {
+		var isoCode, name, featureType, geometryJSON string
+		if err := rows.Scan(&isoCode, &name, &featureType, &geometryJSON); err != nil {
+			return 0, err
+		}
+		features = append(features, geoJSONFeature{
+			Type: featureType,
+			ID:   isoCode,
+			Properties: map[string]interface{}{
+				"name": name,
+			},
+			Geometry: json.RawMessage(geometryJSON),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	if len(features) == 0 {
+		return 0, fmt.Errorf("no features in geojson_countries table")
+	}
+
+	collection := geoJSONCollection{
+		Type:     "FeatureCollection",
+		Features: features,
+	}
+	if err := writeJSON(path, collection); err != nil {
+		return 0, err
+	}
+	return len(features), nil
 }
 
 func queryCountries(db *sql.DB) ([]CountryRecord, error) {

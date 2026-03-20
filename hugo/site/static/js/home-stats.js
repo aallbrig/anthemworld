@@ -8,8 +8,10 @@
 
   const container = document.getElementById('home-top3');
   if (!container) return;
-  const t = (key, vars = {}, fallback = '') =>
-    window.AnthemI18n?.t?.(key, vars, fallback) ?? fallback || key;
+  const t = (key, vars = {}, fallback = '') => {
+    const translated = window.AnthemI18n?.t?.(key, vars, fallback);
+    return translated ?? fallback ?? key;
+  };
 
   // API base must be set explicitly via data-api-base attribute on the container.
   // This prevents spurious fetches in CI (Hugo runs on localhost but the game API doesn't).

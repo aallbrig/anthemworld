@@ -23,6 +23,9 @@
                 <li class="nav-item">
                     <a class="nav-link{{ with .File }}{{ if eq .BaseFileName "leaderboard" }} active{{ end }}{{ end }}" href="{{ "leaderboard/" | relLangURL }}">{{ i18n "nav_leaderboard" }}</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link{{ with .File }}{{ if eq .BaseFileName "profile" }} active{{ end }}{{ end }}" href="{{ "profile/" | relLangURL }}">{{ i18n "nav_profile" }}</a>
+                </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="languageMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                         {{ i18n "nav_language" }}: {{ .Site.Language.LanguageName }}

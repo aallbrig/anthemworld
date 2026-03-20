@@ -1,0 +1,81 @@
+{{ define "title" }}{{ .Title }} — {{ .Site.Title }}{{ end }}
+
+{{ define "main" }}
+<div class="container my-5" id="profile-page">
+  <div class="mb-4">
+    <h1>🎧 Listening Profile</h1>
+    <p class="lead mb-2">See which anthems you have fully heard, partially explored, or never played in this browser.</p>
+    <p class="text-muted small mb-0">
+      Progress is stored locally for now. This page is designed so it can later be backed by an email-linked account without changing the profile UI.
+    </p>
+  </div>
+
+  <div id="profile-loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading…</span>
+    </div>
+    <p class="mt-2 text-muted">Building your listening profile…</p>
+  </div>
+
+  <div id="profile-error" class="alert alert-warning d-none">
+    Could not load your listening profile right now.
+  </div>
+
+  <div id="profile-content" class="d-none">
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body text-center">
+            <div class="text-muted small">Anthems tracked</div>
+            <div class="display-6 fw-semibold" id="profile-total-count">0</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body text-center">
+            <div class="text-muted small">Listened at least a bit</div>
+            <div class="display-6 fw-semibold" id="profile-listened-count">0</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body text-center">
+            <div class="text-muted small">Fully heard</div>
+            <div class="display-6 fw-semibold text-warning" id="profile-full-anthem-count">0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm" id="profile-table-card">
+      <div class="card-header">
+        <h2 class="h5 mb-0">🎼 All anthem progress</h2>
+      </div>
+      <div class="card-body">
+        <p class="text-muted small">A single view of everything you have heard in this browser, with listening credit, completion, and inline playback.</p>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0" id="profile-table">
+            <thead>
+              <tr>
+                <th>Country</th>
+                <th>Anthem</th>
+                <th>Status</th>
+                <th>Completion</th>
+                <th>Listen</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="text-muted small d-none mt-2" id="profile-table-empty"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+<script src="{{ "js/profile.js" | relURL }}"></script>
+{{ end }}

@@ -1,5 +1,8 @@
 {{ define "title" }}{{ .Title }} — {{ .Site.Title }}{{ end }}
 
+{{ define "og_title" }}{{ .Title }} — National Anthem{{ end }}
+{{ define "twitter_title" }}{{ .Title }} — National Anthem{{ end }}
+
 {{ define "main" }}
 <div class="container my-5" id="country-detail" data-iso="{{ .Params.iso }}">
 
@@ -89,6 +92,14 @@
       </div>
     </div>
   </div>
+
+  {{/* Static SEO content rendered from frontmatter/markdown body */}}
+  {{ if .Content }}
+  <div class="mt-4 text-muted small country-static-content visually-hidden" aria-hidden="true">
+    {{ .Content }}
+  </div>
+  {{ end }}
+
 </div>
 {{ end }}
 

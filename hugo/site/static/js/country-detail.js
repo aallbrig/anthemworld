@@ -105,9 +105,18 @@
     const af = (c.audio_files || [])[0];
     if (af) {
       const audio = document.getElementById('cd-audio');
-      audio.src = af.url;
-      audio.setAttribute('type', window.AudioController.mime(af.format));
-      audio.dataset.anthem = a.name || commonName;
+      window.AnthemAudioWidget.configure(audio, {
+        audioUrl: af.url,
+        audioFormat: af.format,
+        countryId: c.iso_alpha3 || iso,
+        countryName: commonName,
+        anthemName: a.name || commonName,
+        flagUrl: c.flag_url || '',
+        countryUrl: `/countries/${String(c.iso_alpha3 || iso).toLowerCase()}/`,
+        listenSource: 'country-detail',
+        preload: 'metadata',
+        className: audio.className,
+      });
       if (af.license) {
         setText('cd-audio-license', `${t('country_detail_license')}: ${af.license}`);
         show(document.getElementById('cd-audio-license'));

@@ -7,7 +7,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function t(key, vars = {}, fallback = '') {
-    return window.AnthemI18n?.t?.(key, vars, fallback) ?? fallback || key;
+    const translated = window.AnthemI18n?.t?.(key, vars, fallback);
+    return translated ?? fallback ?? key;
 }
 
 function initCountriesTable() {
@@ -54,6 +55,7 @@ function renderTable(data) {
                 region,                    // col 6: region
                 audioFile ? audioFile.url : '', // col 7: audio url
                 audioFile ? (audioFile.format || 'ogg') : '', // col 8: audio format
+                isoKey,                    // col 9: iso alpha-3
             ]);
         }
     }
@@ -66,30 +68,39 @@ function renderTable(data) {
         data: rows,
         columns: [
             { title: t('countries_column_flag'),        visible: false },   // 0 - hidden, drives render
-            { title: t('countries_column_country'),     render: (d, t, row) => {
+            { title: t('countries_column_country'),     render: (d, _type, row) => {
                 const flag = row[0]
-                    ? `<img src="${row[0]}" alt="" style="height:18px;vertical-align:middle;margin-right:6px;" onerror="this.style.display='none'">`
+                    ? `<img src="${row[0]}" alt="" loading="lazy" decoding="async" style="height:18px;vertical-align:middle;margin-right:6px;" onerror="this.style.display='none'">`
                     : '';
-                return flag + d;
+                const iso = String(row[9] || '').toLowerCase();
+                const href = iso ? `/countries/${iso}/` : '#';
+                return `<a href="${href}" class="text-decoration-none">${flag}${d}</a>`;
             }},
-            { title: t('countries_column_national_anthem'), render: (d, t, row) => {
-                const en = row[2];
+            { title: t('countries_column_national_anthem'), render: (d, _type, row) => {
+                const en = row[3];
                 return en ? `${d} <span class="text-muted small">(${en})</span>` : d;
             }},
             { title: t('countries_column_english_title'), visible: false }, // 3 - included in Anthem col
             { title: t('countries_column_adopted'),     defaultContent: '—' },
             { title: t('countries_column_composer'),    defaultContent: '—', render: d => d || '—' },
             { title: t('countries_column_region') },
-            { title: t('countries_column_audio'),       orderable: false, render: (d, t, row) => {
+            { title: t('countries_column_audio'),       orderable: false, render: (d, _type, row) => {
                 if (!d) return `<span class="badge bg-secondary">${t('countries_badge_none')}</span>`;
-                const fmt = row[8] || 'ogg';
-                const mime = window.AudioController?.mime?.(fmt)
-                    || (fmt === 'mp3' ? 'audio/mpeg' : fmt === 'wav' ? 'audio/wav' : 'audio/ogg');
-                return `<audio controls preload="none" style="height:28px;width:180px;">
-                    <source src="${d}" type="${mime}">
-                </audio>`;
+                const iso = row[9] || '';
+                return window.AnthemAudioWidget.renderHTML({
+                    audioUrl: d,
+                    audioFormat: row[8] || 'ogg',
+                    countryId: iso,
+                    countryName: row[1] || '',
+                    anthemName: row[2] || '',
+                    flagUrl: row[0] || '',
+                    countryUrl: `/countries/${String(iso).toLowerCase()}/`,
+                    listenSource: 'countries-table',
+                    inlineStyle: 'height:28px;width:180px;'
+                });
             }},
             { title: t('countries_column_audio_format'), visible: false },  // 8 - used by Audio render
+            { title: 'ISO', visible: false },                               // 9 - used by audio metadata
         ],
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, t('datatable_all')]],
@@ -121,10 +132,6 @@ function renderTable(data) {
     } else {
         const withAnthem = rows.filter(r => r[2] !== '—').length;
         const withAudio  = rows.filter(r => r[7]).length;
-        $('#countries-table_wrapper').before(
-            `<div class="alert alert-info mb-3">` +
-            t('countries_summary_html', { rows: rows.length, withAnthem, withAudio }) +
-            `</div>`
-        );
+        console.info('[countries-table] ' + t('countries_summary_html', { rows: rows.length, withAnthem, withAudio }));
     }
 }

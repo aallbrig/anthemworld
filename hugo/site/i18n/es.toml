@@ -22,6 +22,9 @@ other = "🎵 Batalla"
 [nav_leaderboard]
 other = "🏆 Clasificación"
 
+[nav_profile]
+other = "📈 Perfil"
+
 [footer_title]
 other = "Anthem World"
 

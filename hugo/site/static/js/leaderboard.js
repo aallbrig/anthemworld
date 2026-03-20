@@ -8,8 +8,10 @@
   'use strict';
 
   const API = (window.GAME_API_URL || '').replace(/\/$/, '');
-  const t = (key, vars = {}, fallback = '') =>
-    window.AnthemI18n?.t?.(key, vars, fallback) ?? fallback || key;
+  const t = (key, vars = {}, fallback = '') => {
+    const translated = window.AnthemI18n?.t?.(key, vars, fallback);
+    return translated ?? fallback ?? key;
+  };
 
   const loading   = document.getElementById('leaderboard-loading');
   const errorEl   = document.getElementById('leaderboard-error');

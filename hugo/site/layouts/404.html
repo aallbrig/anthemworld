@@ -1,0 +1,24 @@
+{{ define "title" }}Page Not Found — {{ .Site.Title }}{{ end }}
+
+{{ define "main" }}
+<div class="container my-5 text-center">
+  <div class="py-5">
+    <div class="display-1 mb-3">🌍</div>
+    <h1 class="display-5 fw-bold mb-3">Page Not Found</h1>
+    <p class="lead text-muted mb-4">
+      This page doesn't exist — but 193 countries worth of national anthems do.
+    </p>
+    <div class="d-flex gap-3 justify-content-center flex-wrap">
+      <a href="{{ "" | relLangURL }}" class="btn btn-primary btn-lg">
+        🏠 Home
+      </a>
+      <a href="{{ "map/" | relLangURL }}" class="btn btn-outline-secondary btn-lg">
+        🗺️ World Map
+      </a>
+      <a href="{{ "countries/" | relLangURL }}" class="btn btn-outline-secondary btn-lg">
+        📋 Browse Countries
+      </a>
+    </div>
+  </div>
+</div>
+{{ end }}

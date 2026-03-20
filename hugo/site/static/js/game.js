@@ -13,8 +13,10 @@
   const GEOJSON_URL   = '/data/countries.geojson';
   // Must match FULL_LISTEN_MS in sam/game/functions/shared/elo.js
   const FULL_LISTEN_MS = 10_000;
-  const t = (key, vars = {}, fallback = '') =>
-    window.AnthemI18n?.t?.(key, vars, fallback) ?? fallback || key;
+  const t = (key, vars = {}, fallback = '') => {
+    const translated = window.AnthemI18n?.t?.(key, vars, fallback);
+    return translated ?? fallback ?? key;
+  };
 
   // ─── localStorage helpers ──────────────────────────────────────────────────
   // Tracks which country anthems the user has heard in full (played to the end).
@@ -55,12 +57,29 @@
   let mapA = null;
   let mapB = null;
   let geojsonCache = null; // loaded once, reused
+  let geojsonIndex = null;
   let unmappableRetryCount = 0;
 
   function initMaps(geojsonData) {
     if (mapA) return; // already initialized
     mapA = new CountryHighlightMap('map-a', geojsonData);
     mapB = new CountryHighlightMap('map-b', geojsonData);
+  }
+
+  function ensureGeojsonIndex() {
+    if (!geojsonCache || geojsonIndex) return geojsonIndex;
+    if (window.CountryHighlightMap?.buildCountryFeatureIndex) {
+      geojsonIndex = window.CountryHighlightMap.buildCountryFeatureIndex(geojsonCache);
+    }
+    return geojsonIndex;
+  }
+
+  function matchupIsMappable(data) {
+    const index = ensureGeojsonIndex();
+    if (!index || !window.CountryHighlightMap?.resolveCountryFeature) return true;
+    const resolvedA = window.CountryHighlightMap.resolveCountryFeature(index, data?.country_a?.country_id, data?.country_a?.name);
+    const resolvedB = window.CountryHighlightMap.resolveCountryFeature(index, data?.country_b?.country_id, data?.country_b?.name);
+    return !!(resolvedA && resolvedB);
   }
 
   function flyMapsToCountries(isoA, nameA, isoB, nameB) {
@@ -519,19 +538,40 @@
   }
 
   function renderMatchup(data) {
+    if (geojsonCache && !matchupIsMappable(data)) {
+      console.warn('CountryHighlightMap: skipping unmappable matchup', {
+        countryA: data.country_a.country_id,
+        countryB: data.country_b.country_id,
+      });
+      if (unmappableRetryCount < 6) {
+        unmappableRetryCount++;
+        loadMatchup();
+        return;
+      }
+      unmappableRetryCount = 0;
+      showError('Map error', 'Could not find a live-map matchup right now. Please try again.', loadMatchup);
+      return;
+    }
+
     matchupId  = data.matchup_id;
     countryAId = data.country_a.country_id;
     countryBId = data.country_b.country_id;
+    const clientProgressA = window.ListenProgress?.get?.(countryAId);
+    const clientProgressB = window.ListenProgress?.get?.(countryBId);
 
     // Restore prior listen from server (total across session).
-    // If the user previously heard the full anthem (localStorage), credit
-    // them with full weight so they don't have to relisten.
-    listenAMs = hasHeardFull(countryAId)
-      ? Math.max(data.country_a.listen_ms || 0, FULL_LISTEN_MS)
-      : (data.country_a.listen_ms || 0);
-    listenBMs = hasHeardFull(countryBId)
-      ? Math.max(data.country_b.listen_ms || 0, FULL_LISTEN_MS)
-      : (data.country_b.listen_ms || 0);
+    // Client-side progress from other pages also counts toward how informed the
+    // player's opinion is, even before profiles move to account-backed storage.
+    listenAMs = Math.max(
+      data.country_a.listen_ms || 0,
+      window.ListenProgress?.effectiveListenMs?.(clientProgressA) || clientProgressA?.total_listen_ms || 0,
+      hasHeardFull(countryAId) ? FULL_LISTEN_MS : 0
+    );
+    listenBMs = Math.max(
+      data.country_b.listen_ms || 0,
+      window.ListenProgress?.effectiveListenMs?.(clientProgressB) || clientProgressB?.total_listen_ms || 0,
+      hasHeardFull(countryBId) ? FULL_LISTEN_MS : 0
+    );
 
     // Credit full-anthem localStorage for the bonus bar.
     // revealAnthemBar is called from triggerCardJuice (which fires when first
@@ -546,8 +586,18 @@
     $('name-a').textContent   = data.country_a.name || countryAId;
     $('anthem-a').textContent = data.country_a.anthem_name || '';
     $('elo-a').textContent    = data.country_a.elo_score || 1500;
-    $('audio-a').src     = data.country_a.audio_url || '';
-    $('audio-a').preload = 'metadata';
+    window.AnthemAudioWidget.configure($('audio-a'), {
+      audioUrl: data.country_a.audio_url || '',
+      audioFormat: data.country_a.audio_format || 'ogg',
+      countryId: countryAId,
+      countryName: data.country_a.name || countryAId,
+      anthemName: data.country_a.anthem_name || '',
+      flagUrl: data.country_a.flag_url || '',
+      countryUrl: `/countries/${String(countryAId || '').toLowerCase()}/`,
+      listenSource: 'game',
+      preload: 'metadata',
+      className: $('audio-a').className,
+    });
     $('vote-a-btn').disabled  = false;
     if (listenAMs > 0) {
       show($('listen-indicator-a'));
@@ -563,8 +613,18 @@
     $('name-b').textContent   = data.country_b.name || countryBId;
     $('anthem-b').textContent = data.country_b.anthem_name || '';
     $('elo-b').textContent    = data.country_b.elo_score || 1500;
-    $('audio-b').src     = data.country_b.audio_url || '';
-    $('audio-b').preload = 'metadata';
+    window.AnthemAudioWidget.configure($('audio-b'), {
+      audioUrl: data.country_b.audio_url || '',
+      audioFormat: data.country_b.audio_format || 'ogg',
+      countryId: countryBId,
+      countryName: data.country_b.name || countryBId,
+      anthemName: data.country_b.anthem_name || '',
+      flagUrl: data.country_b.flag_url || '',
+      countryUrl: `/countries/${String(countryBId || '').toLowerCase()}/`,
+      listenSource: 'game',
+      preload: 'metadata',
+      className: $('audio-b').className,
+    });
     $('vote-b-btn').disabled  = false;
     if (listenBMs > 0) {
       show($('listen-indicator-b'));
@@ -591,17 +651,7 @@
       data.country_b.country_id, data.country_b.name
     );
     if (mapResolution && (!mapResolution.a || !mapResolution.b)) {
-      console.warn('CountryHighlightMap: skipping unmappable matchup', {
-        countryA: data.country_a.country_id,
-        countryB: data.country_b.country_id,
-      });
-      if (unmappableRetryCount < 6) {
-        unmappableRetryCount++;
-        loadMatchup();
-        return;
-      }
-      unmappableRetryCount = 0;
-      showError('Map error', 'Could not find a live-map matchup right now. Please try again.', loadMatchup);
+      showError('Map error', 'Could not resolve the live map for this matchup. Please try again.', loadMatchup);
       return;
     }
     unmappableRetryCount = 0;
@@ -687,6 +737,7 @@
   (async function boot() {
     try {
       geojsonCache = await fetch(GEOJSON_URL).then(r => r.json());
+      geojsonIndex = null;
     } catch (e) {
       console.warn('CountryHighlightMap: could not load GeoJSON', e);
     }

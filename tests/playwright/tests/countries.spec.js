@@ -81,4 +81,13 @@ test.describe('Countries Table Tests', () => {
 
     expect(paginationExists).toBe(true);
   });
+
+  test('country names link to detail pages', async ({ page }) => {
+    await page.goto('/countries/');
+    await page.waitForTimeout(1000);
+
+    const firstCountryLink = page.locator('#countries-table tbody tr').first().locator('td').first().locator('a');
+    await expect(firstCountryLink).toBeVisible();
+    await expect(firstCountryLink).toHaveAttribute('href', /\/countries\/[a-z]{3}\//);
+  });
 });

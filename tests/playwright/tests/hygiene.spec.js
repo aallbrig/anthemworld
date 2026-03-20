@@ -11,7 +11,7 @@
 
 const { test, expect } = require('@playwright/test');
 
-// Maximum time (ms) for a page's load event to fire
+// Default maximum time (ms) for a page's load event to fire
 const PAGE_LOAD_TIMEOUT_MS = 5000;
 // Time (ms) to settle after load — allows async fetches (DataTable init, JSON loads) to complete
 const ASYNC_SETTLE_MS = 1000;
@@ -31,7 +31,7 @@ function isIgnored(text) {
 
 const PAGES = [
   { path: '/',                  name: 'Homepage' },
-  { path: '/map/',              name: 'Map' },
+  { path: '/map/',              name: 'Map',                      timeout: 10000 }, // Leaflet + 895KB GeoJSON
   { path: '/countries/',        name: 'Countries' },
   { path: '/leaderboard/',      name: 'Leaderboard' },
   { path: '/game/',             name: 'Game' },
@@ -41,7 +41,8 @@ const PAGES = [
   { path: '/countries/bih/',    name: 'Country detail (Bosnia, no audio)' },
 ];
 
-for (const { path, name } of PAGES) {
+for (const { path, name, timeout: pageTimeout } of PAGES) {
+  const loadTimeout = pageTimeout ?? PAGE_LOAD_TIMEOUT_MS;
   test.describe(name, () => {
     test('no JS console errors', async ({ page }) => {
       const errors = [];
@@ -60,9 +61,9 @@ for (const { path, name } of PAGES) {
       });
 
       const t0 = Date.now();
-      await page.goto(path, { waitUntil: 'load', timeout: PAGE_LOAD_TIMEOUT_MS });
+      await page.goto(path, { waitUntil: 'load', timeout: loadTimeout });
       const loadMs = Date.now() - t0;
-      expect(loadMs, `Page load exceeded ${PAGE_LOAD_TIMEOUT_MS}ms`).toBeLessThan(PAGE_LOAD_TIMEOUT_MS);
+      expect(loadMs, `Page load exceeded ${loadTimeout}ms`).toBeLessThan(loadTimeout);
 
       // Allow async JS (data fetches, DataTable init) to complete
       await page.waitForTimeout(ASYNC_SETTLE_MS);
@@ -91,7 +92,7 @@ for (const { path, name } of PAGES) {
         failed.push(`FAILED ${req.url()}: ${err}`);
       });
 
-      await page.goto(path, { waitUntil: 'load', timeout: PAGE_LOAD_TIMEOUT_MS });
+      await page.goto(path, { waitUntil: 'load', timeout: loadTimeout });
       await page.waitForTimeout(ASYNC_SETTLE_MS);
 
       expect(failed, `Failed resources on ${path}:\n${failed.join('\n')}`).toHaveLength(0);

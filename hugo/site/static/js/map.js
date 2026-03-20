@@ -3,8 +3,18 @@ let map;
 let countriesLayer;
 let anthemData = {};     // keyed by ISO alpha-3 upper/lower
 let anthemByName = {};   // keyed by country name (common_name preferred, then name)
-const t = (key, vars = {}, fallback = '') =>
-    window.AnthemI18n?.t?.(key, vars, fallback) ?? fallback || key;
+const t = (key, vars = {}, fallback = '') => {
+    const translated = window.AnthemI18n?.t?.(key, vars, fallback);
+    return translated ?? fallback ?? key;
+};
+
+function esc(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
 
 // Load anthem data from generated JSON file
 async function loadAnthemData() {
@@ -138,9 +148,18 @@ function buildPopupContent(countryName, isoCode, countryRecord) {
         if (instrumental && instrumental.url) {
             audioPlayerHTML = `
                 <div class="mt-2">
-                    <audio controls style="width:100%;height:32px;" preload="metadata">
-                        <source src="${instrumental.url}" type="${window.AudioController.mime(instrumental.format)}">
-                    </audio>
+                    ${window.AnthemAudioWidget.renderHTML({
+                        audioUrl: instrumental.url,
+                        audioFormat: instrumental.format,
+                        countryId: isoCode,
+                        countryName: countryRecord.common_name || countryRecord.name || countryName,
+                        anthemName: anthem.name || '',
+                        flagUrl: flagURL || '',
+                        countryUrl: `/countries/${String(isoCode || '').toLowerCase()}/`,
+                        listenSource: 'map-popup',
+                        preload: 'metadata',
+                        inlineStyle: 'width:100%;height:32px;'
+                    })}
                 </div>`;
         }
 
