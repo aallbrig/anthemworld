@@ -1,5 +1,6 @@
 ---
 title: "Bienvenido a Anthem World"
+description: "Descubre, explora y clasifica los himnos nacionales de 193 países reconocidos por la ONU mediante un mapa interactivo, páginas de países y Anthem Battle."
 ---
 
 <div class="text-center mb-5">

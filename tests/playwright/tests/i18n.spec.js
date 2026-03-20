@@ -5,6 +5,8 @@ test.describe('Spanish locale smoke tests', () => {
     await page.goto('/es/');
 
     await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Descubre, explora y clasifica los himnos nacionales/);
+    await expect(page.locator('link[rel="alternate"][hreflang="en"]')).toHaveAttribute('href', /\/$/);
     await expect(page.getByRole('heading', { level: 1, name: /Anthem World/i })).toBeVisible();
     await expect(page.getByText('Descubre, explora y clasifica los himnos nacionales')).toBeVisible();
     await expect(page.locator('nav').getByText('Inicio', { exact: true }).first()).toBeVisible();
@@ -47,6 +49,8 @@ test.describe('Spanish locale smoke tests', () => {
   test('spanish country detail page renders translated chrome', async ({ page }) => {
     await page.goto('/es/countries/usa/');
     await expect(page.locator('#country-content')).toBeVisible();
+    await expect(page.locator('link[rel="alternate"][hreflang="en"]')).toHaveAttribute('href', /\/countries\/usa\/$/);
+    await expect(page.locator('link[rel="alternate"][hreflang="x-default"]')).toHaveAttribute('href', /\/countries\/usa\/$/);
 
     await expect(page.locator('.breadcrumb').getByText('Inicio', { exact: true })).toBeVisible();
     await expect(page.locator('.breadcrumb').getByText('Países', { exact: true })).toBeVisible();

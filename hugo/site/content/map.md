@@ -1,5 +1,6 @@
 ---
 title: "Interactive World Map"
+description: "Browse the interactive world map to open any country, learn about its national anthem, and play available audio recordings."
 ---
 
 <div class="mb-4">

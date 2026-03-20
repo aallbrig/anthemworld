@@ -1,5 +1,6 @@
 ---
 title: "Mapa interactivo del mundo"
+description: "Explora el mapa interactivo del mundo para abrir cualquier país, conocer su himno nacional y reproducir los audios disponibles."
 ---
 
 <div class="mb-4">

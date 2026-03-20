@@ -1,5 +1,6 @@
 ---
 title: "Welcome to Anthem World"
+description: "Discover, explore, and rank the national anthems of 193 UN-recognized countries through an interactive map, country pages, and Anthem Battle."
 ---
 
 <div class="text-center mb-5">
