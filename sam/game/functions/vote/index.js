@@ -9,16 +9,17 @@
  * ELO is weighted by cumulative listen time for each anthem (any round):
  *   - Full weight (1.0) when both anthems heard ≥ FULL_LISTEN_MS (10 s)
  *   - Partial weight proportional to listen time otherwise
+ *   - Minimum ±0.25 ELO change ensures every genuine vote counts
  *   - vote_weight = listenWeight(winner) × listenWeight(loser)
  *
  * On success:
- *   - Updates ELO scores (scaled by vote_weight)
- *   - Stores vote record
+ *   - Updates ELO scores (decimal, scaled by vote_weight, floored at ±0.25)
+ *   - Stores vote record with ip_hash, voter_country, vote_category, week_id
  *   - Updates session vote count
  *   - Updates listen history
- *   - Returns updated ELO scores + vote_weight
+ *   - Returns updated ELO scores + vote_weight + vote_category
  *
- * Response 200: { vote_id, vote_weight, winner: { country_id, old_elo, new_elo }, loser: { ... } }
+ * Response 200: { vote_id, vote_weight, vote_category, winner: { ... }, loser: { ... } }
  * Response 400: bad request
  * Response 403: session not found
  * Response 429: rate limited
@@ -35,6 +36,15 @@ const RANKINGS_TABLE         = process.env.RANKINGS_TABLE;
 const VOTES_TABLE            = process.env.VOTES_TABLE;
 const LISTEN_TABLE           = process.env.LISTEN_TABLE;
 const MAX_VOTES_PER_SESSION  = parseInt(process.env.MAX_VOTES_PER_SESSION || '100', 10);
+
+/** ISO 8601 week identifier, e.g. "2026-W12". */
+function isoWeekId(date = new Date()) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+}
 
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
@@ -117,21 +127,31 @@ exports.handler = async (event) => {
         const fullAnthemWinner = winner_id === country_a ? !!full_anthem_a : !!full_anthem_b;
         const fullAnthemLoser  = loser_id  === country_a ? !!full_anthem_a : !!full_anthem_b;
 
-        const { winner: newWinnerElo, loser: newLoserElo, vote_weight, anthem_bonus } =
+        const { winner: newWinnerElo, loser: newLoserElo, vote_weight, anthem_bonus,
+                vote_category, elo_delta_winner, elo_delta_loser } =
             updateElo(winnerElo, loserElo, totalListenWinner, totalListenLoser, fullAnthemWinner, fullAnthemLoser);
 
         const voteId  = uuidv4();
         const votedAt = new Date().toISOString();
+        const weekId  = isoWeekId();
         // TTL: 90 days for vote records
         const ttl = Math.floor(Date.now() / 1000) + 90 * 24 * 3600;
         const listenTtl = Math.floor(Date.now() / 1000) + 24 * 3600;
 
         await Promise.all([
-            // Store vote record
+            // Store vote record with analytics fields
             db.send(new PutCommand({
                 TableName: VOTES_TABLE,
-                Item: { vote_id: voteId, session_id, matchup_id, winner_id, loser_id,
-                        listen_a_ms, listen_b_ms, voted_at: votedAt, ttl },
+                Item: {
+                    vote_id: voteId, session_id, matchup_id, winner_id, loser_id,
+                    listen_a_ms, listen_b_ms, voted_at: votedAt, ttl,
+                    ip_hash: session.ip_hash || null,
+                    voter_country: session.user_country || null,
+                    vote_weight, vote_category,
+                    elo_delta_winner, elo_delta_loser,
+                    anthem_bonus: !!anthem_bonus,
+                    week_id: weekId,
+                },
             })),
             // Update winner ELO
             db.send(new UpdateCommand({
@@ -173,9 +193,13 @@ exports.handler = async (event) => {
         ]);
 
         return ok({
-            vote_id:      voteId,
+            vote_id:       voteId,
             vote_weight,
-            anthem_bonus: !!anthem_bonus,
+            vote_category,
+            anthem_bonus:  !!anthem_bonus,
+            elo_delta_winner,
+            elo_delta_loser,
+            week_id:       weekId,
             winner: { country_id: winner_id, old_elo: winnerElo, new_elo: newWinnerElo },
             loser:  { country_id: loser_id,  old_elo: loserElo,  new_elo: newLoserElo },
         });

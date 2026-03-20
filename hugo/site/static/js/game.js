@@ -600,8 +600,10 @@
     });
     $('vote-a-btn').disabled  = false;
     if (listenAMs > 0) {
-      show($('listen-indicator-a'));
-      $('listen-timer-a').textContent = (listenAMs / 1000).toFixed(1);
+      const indA = $('listen-indicator-a');
+      const timerA = $('listen-timer-a');
+      if (indA) show(indA);
+      if (timerA) timerA.textContent = (listenAMs / 1000).toFixed(1);
       updateListenProgress('a', listenAMs);
     } else {
       hide($('listen-indicator-a'));
@@ -627,8 +629,10 @@
     });
     $('vote-b-btn').disabled  = false;
     if (listenBMs > 0) {
-      show($('listen-indicator-b'));
-      $('listen-timer-b').textContent = (listenBMs / 1000).toFixed(1);
+      const indB = $('listen-indicator-b');
+      const timerB = $('listen-timer-b');
+      if (indB) show(indB);
+      if (timerB) timerB.textContent = (listenBMs / 1000).toFixed(1);
       updateListenProgress('b', listenBMs);
     } else {
       hide($('listen-indicator-b'));
