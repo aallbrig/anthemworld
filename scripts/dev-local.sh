@@ -78,10 +78,16 @@ if lsof -ti :"$SAM_PORT" >/dev/null 2>&1; then
 fi
 info "Starting SAM local API on port $SAM_PORT..."
 cd "$SAM_DIR"
+# --skip-pull-image: skip Docker Hub check for image updates (faster startup)
+# --docker-network: put Lambda containers on the same Docker network as LocalStack
+#   so they can reach it via the 'localstack' service name instead of a hardcoded bridge IP.
+# To pick up Lambda code changes: run 'make sam-restart' (restarts SAM without touching LocalStack/Hugo)
 sam local start-api \
   --port "$SAM_PORT" \
   --warm-containers LAZY \
   --env-vars env.local.json \
+  --skip-pull-image \
+  --docker-network anthemworld_default \
   2>&1 | grep -v "^20[0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] " &
 SAM_PID=$!
 

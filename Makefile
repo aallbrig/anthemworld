@@ -42,19 +42,36 @@ game-down:
 game-init:
 	./sam/game/scripts/init-localstack.sh
 
-# Start SAM local API (requires Docker + LocalStack running)
+# Start SAM local API (requires Docker + LocalStack already running)
 game-start:
 	cd sam/game && \
 	sam local start-api --port 3001 \
 	  --env-vars env.local.json \
-	  --warm-containers LAZY
+	  --warm-containers LAZY \
+	  --skip-pull-image \
+	  --docker-network anthemworld_default
 
-# Convenience: full local dev setup
+# Convenience: full local dev setup (LocalStack + SAM, no Hugo)
 game-dev: game-up game-init game-start
 
-# One-command full local dev (LocalStack + SAM + Hugo)
+# One-command full local dev (LocalStack + SAM + Hugo).
+# Equivalent to running ./scripts/dev-local.sh directly — the Makefile target
+# is just a convenient entry point.
 dev:
 	bash scripts/dev-local.sh
+
+# Restart just the SAM local API to pick up Lambda code changes.
+# Use this instead of a full 'make dev' restart when you edit a Lambda function.
+sam-restart:
+	@echo "Restarting SAM local API on port 3001..."
+	@lsof -ti :3001 | xargs -r kill 2>/dev/null || true
+	@sleep 1
+	cd sam/game && \
+	sam local start-api --port 3001 \
+	  --env-vars env.local.json \
+	  --warm-containers LAZY \
+	  --skip-pull-image \
+	  --docker-network anthemworld_default
 
 # Clear all DynamoDB session/vote/listen data from LocalStack and re-seed rankings.
 # Use when rate limits accumulate across test runs (e.g. MAX_SESSIONS_PER_IP exhausted).
