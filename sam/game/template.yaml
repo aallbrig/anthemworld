@@ -138,6 +138,25 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref ListenHistoryTable
 
+  WeeklyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: weekly/index.handler
+      Description: Return weekly round winners and vote statistics
+      Events:
+        GetWeekly:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GameApi
+            Path: /weekly
+            Method: GET
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref VotesTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref RankingsTable
+
   # ── DynamoDB Tables ─────────────────────────────────────────────────────────
   RankingsTable:
     Type: AWS::DynamoDB::Table
