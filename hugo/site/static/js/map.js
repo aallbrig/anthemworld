@@ -277,12 +277,20 @@ function onCountryClick(e) {
     const props = layer.feature.properties;
 
     const countryName = props.name || props.ADMIN || props.NAME || t('map_unknown_country');
-    const isoCode = (props.iso_a3 || props.ISO_A3 || props.id || '').toUpperCase();
 
     // Try ISO lookup first, then fall back to name-based lookup
-    const countryRecord = anthemData[isoCode]
+    const isoFromGeo = (props.iso_a3 || props.ISO_A3 || props.id || '').toUpperCase();
+    const countryRecord = anthemData[isoFromGeo]
         || anthemByName[countryName.toLowerCase()]
         || null;
+
+    // GeoJSON features often have no iso_a3; fall back to the anthem record's stored code.
+    // Without a valid isoCode the audio widget can't set data-country-id and listen
+    // tracking will never fire.
+    const isoCode = anthemData[isoFromGeo]
+        ? isoFromGeo
+        : (countryRecord?.iso_alpha3 || isoFromGeo || '').toUpperCase();
+
     const popupContent = buildPopupContent(countryName, isoCode, countryRecord);
 
     const popup = layer.bindPopup(popupContent, { maxWidth: 320 }).openPopup();
