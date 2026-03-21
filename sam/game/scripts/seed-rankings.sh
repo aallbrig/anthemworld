@@ -48,6 +48,10 @@ for iso3, country in data.items():
     audio = country.get("audio_files") or []
     if audio:
         item["audio_url"] = {"S": audio[0]["url"]}
+        # Include duration so the game API can cap listen times (S-01 security fix)
+        dur = audio[0].get("duration_ms")
+        if dur:
+            item["duration_ms"] = {"N": str(int(dur))}
     items.append({"PutRequest": {"Item": item}})
 
 # DynamoDB batch-write allows max 25 items per request

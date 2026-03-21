@@ -5,7 +5,9 @@ const CATALOG = {
     en: {
         internal_error: 'An unexpected error occurred',
         session_limit_reached: 'Maximum {max} sessions per IP per day reached. Try again tomorrow.',
-        matchup_session_required: 'session_id query parameter is required',
+        session_expired: 'Your session has expired. Please create a new session.',
+        matchup_session_required: 'session_id query parameter or X-Session-Id header is required',
+        matchup_limit_reached: 'Maximum {max} matchups per day reached. Come back tomorrow!',
         session_not_found: 'Session not found or expired. Create a new session.',
         matchup_not_enough_countries: 'Not enough countries in rankings table. Run data initialization first.',
         vote_invalid_json: 'Invalid JSON body',
@@ -18,11 +20,14 @@ const CATALOG = {
         vote_matchup_mismatch: 'matchup_id does not match your current matchup. Request a new matchup first.',
         vote_pair_mismatch: 'winner_id/loser_id do not match matchup countries.',
         vote_limit_reached: 'Maximum {max} votes per day reached. Come back tomorrow!',
+        listen_invalid_country_id: 'country_id must be a 2–3 letter ISO country code',
     },
     es: {
         internal_error: 'Ocurrió un error inesperado',
         session_limit_reached: 'Se alcanzó el máximo de {max} sesiones por IP y por día. Vuelve mañana.',
-        matchup_session_required: 'El parámetro de consulta session_id es obligatorio',
+        session_expired: 'Tu sesión ha expirado. Por favor crea una nueva sesión.',
+        matchup_session_required: 'El parámetro session_id o el encabezado X-Session-Id es obligatorio',
+        matchup_limit_reached: 'Se alcanzó el máximo de {max} enfrentamientos por día. ¡Vuelve mañana!',
         session_not_found: 'La sesión no existe o ha expirado. Crea una nueva sesión.',
         matchup_not_enough_countries: 'No hay suficientes países en la tabla de clasificación. Ejecuta primero la inicialización de datos.',
         vote_invalid_json: 'El cuerpo JSON no es válido',
@@ -35,6 +40,7 @@ const CATALOG = {
         vote_matchup_mismatch: 'matchup_id no coincide con tu enfrentamiento actual. Solicita primero un nuevo enfrentamiento.',
         vote_pair_mismatch: 'winner_id/loser_id no coinciden con los países del enfrentamiento.',
         vote_limit_reached: 'Se alcanzó el máximo de {max} votos por día. ¡Vuelve mañana!',
+        listen_invalid_country_id: 'country_id debe ser un código ISO de país de 2 o 3 letras',
     },
 };
 

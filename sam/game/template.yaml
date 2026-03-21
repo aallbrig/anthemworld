@@ -15,6 +15,7 @@ Globals:
         LISTEN_TABLE:    !Ref ListenHistoryTable
         MAX_VOTES_PER_SESSION: "100"
         MAX_SESSIONS_PER_IP:   "5"
+        MAX_MATCHUPS_PER_SESSION: "300"
         CORS_ORIGIN:     "*"
         LOCAL_DYNAMODB_ENDPOINT: ""
         AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1"
@@ -37,6 +38,12 @@ Resources:
         AllowMethods: "'GET,POST,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Session-Id'"
         AllowOrigin: "'*'"
+      # S-02: Throttle all routes to prevent DDoS / cost runaway
+      MethodSettings:
+        - HttpMethod: '*'
+          ResourcePath: '/*'
+          ThrottlingBurstLimit: 50
+          ThrottlingRateLimit: 100
 
   # ── Lambda Functions ────────────────────────────────────────────────────────
   SessionFunction:
@@ -118,6 +125,8 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref RankingsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref VotesTable
 
   ListenFunction:
     Type: AWS::Serverless::Function
@@ -135,6 +144,8 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref SessionsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref RankingsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref ListenHistoryTable
 

@@ -19,6 +19,11 @@ const { detectLanguage } = require('../shared/messages');
 const RANKINGS_TABLE = process.env.RANKINGS_TABLE;
 const VOTES_TABLE    = process.env.VOTES_TABLE;
 
+// S-07: Module-level cache for stats computation (avoids full table scan on every request)
+// Cache is keyed on the query (no week filter only). TTL: 5 minutes.
+const STATS_CACHE_TTL_MS = 5 * 60 * 1000;
+const statsCache = new Map(); // key → { body, generatedAt, expiresAt }
+
 // Simple ISO-3166 alpha-3 → UN region mapping (covers 193 UN members)
 const REGION_MAP = {
   AFG:'Asia',ALB:'Europe',DZA:'Africa',AND:'Europe',AGO:'Africa',ATG:'Americas',ARG:'Americas',
@@ -126,6 +131,15 @@ exports.handler = async (event) => {
     const wantStats = qs.stats === 'true';
     const weekId   = qs.week_id || null;
 
+    // S-07: Return cached stats response if available and not week-filtered
+    const cacheKey = `stats:${weekId || 'all'}`;
+    if (wantStats && !weekId) {
+        const cached = statsCache.get(cacheKey);
+        if (cached && Date.now() < cached.expiresAt) {
+            return ok({ ...cached.body, cache_hit: true });
+        }
+    }
+
     try {
         const scanRes = await db.send(new ScanCommand({ TableName: RANKINGS_TABLE }));
         const items = scanRes.Items || [];
@@ -153,14 +167,20 @@ exports.handler = async (event) => {
             };
         });
 
+        const generatedAt = new Date().toISOString();
         const result = {
             countries:    ranked,
             total:        items.length,
-            generated_at: new Date().toISOString(),
+            generated_at: generatedAt,
+            cache_hit:    false,
         };
 
         if (wantStats) {
             result.stats = await computeVoteStats(weekId);
+            // S-07: Cache the full response for 5 minutes (no week filter only)
+            if (!weekId) {
+                statsCache.set(cacheKey, { body: result, expiresAt: Date.now() + STATS_CACHE_TTL_MS });
+            }
         }
 
         return ok(result);

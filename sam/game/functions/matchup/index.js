@@ -1,38 +1,63 @@
 /**
- * GET /matchup?session_id={id}
+ * GET /matchup?session_id={id}  OR  header X-Session-Id: {id}
  * Returns two anthem entries for the user to compare.
  * Selects two countries with similar ELO scores (within 200 points).
- * Every 10th matchup is a wildcard (random ELO spread).
- * Includes per-anthem listen history so the client knows if voting is instant.
+ * Every 10th vote triggers a wildcard (random ELO spread) on the NEXT matchup.
+ *
+ * Security mitigations:
+ *   S-03: session_id accepted from X-Session-Id header (logs not exposed to query string)
+ *   S-04: matchup_count_today cap (MAX_MATCHUPS_PER_SESSION per day)
+ *   S-05: server-side TTL check rejects expired sessions
+ *   S-08: wildcard condition fixed to (vote_count + 1) % 10 === 0
  *
  * Response 200: { matchup_id, country_a, country_b }
- *   country: { country_id, name, flag_url, anthem_name, audio_url, elo_score,
- *              listen_ms (cumulative ms heard this session) }
+ *   country: { country_id, name, flag_url, anthem_name, audio_url, duration_ms,
+ *              elo_score, listen_ms (cumulative ms heard this session) }
  * Response 400: missing session_id
  * Response 403: session not found / expired
- * Response 429: too many active matchups
+ * Response 429: matchup daily cap exceeded
  */
 const { GetCommand, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../shared/db');
-const { ok, badRequest, forbidden, serverError, options } = require('../shared/response');
+const { ok, badRequest, forbidden, tooManyRequests, serverError, options } = require('../shared/response');
 const { detectLanguage } = require('../shared/messages');
 
-const SESSIONS_TABLE = process.env.SESSIONS_TABLE;
-const RANKINGS_TABLE = process.env.RANKINGS_TABLE;
-const LISTEN_TABLE   = process.env.LISTEN_TABLE;
+const SESSIONS_TABLE          = process.env.SESSIONS_TABLE;
+const RANKINGS_TABLE          = process.env.RANKINGS_TABLE;
+const LISTEN_TABLE            = process.env.LISTEN_TABLE;
+const MAX_MATCHUPS_PER_SESSION = parseInt(process.env.MAX_MATCHUPS_PER_SESSION || '300', 10);
 
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
     const lang = detectLanguage(event.headers);
 
-    const sessionId = event.queryStringParameters?.session_id;
+    // S-03: Accept session_id from header first, fall back to query param
+    const sessionId = (event.headers || {})['X-Session-Id']
+        || (event.headers || {})['x-session-id']
+        || event.queryStringParameters?.session_id;
+
     if (!sessionId) return badRequest('matchup_session_required', null, lang);
 
     try {
         // Validate session
         const sessionRes = await db.send(new GetCommand({ TableName: SESSIONS_TABLE, Key: { session_id: sessionId } }));
         if (!sessionRes.Item) return forbidden('session_not_found', null, lang);
+
+        const session = sessionRes.Item;
+
+        // S-05: Reject expired sessions (server-side TTL enforcement)
+        const now = Math.floor(Date.now() / 1000);
+        if (session.ttl && session.ttl < now) {
+            return forbidden('session_expired', null, lang);
+        }
+
+        // S-04: Enforce daily matchup cap
+        const today = new Date().toISOString().slice(0, 10);
+        const matchupToday = session.matchup_date === today ? (session.matchup_count_today || 0) : 0;
+        if (matchupToday >= MAX_MATCHUPS_PER_SESSION) {
+            return tooManyRequests('matchup_limit_reached', 86400, lang, { max: MAX_MATCHUPS_PER_SESSION });
+        }
 
         // Fetch all ranked countries (scan is fine at 193 items)
         const scanRes = await db.send(new ScanCommand({ TableName: RANKINGS_TABLE }));
@@ -43,9 +68,10 @@ exports.handler = async (event) => {
             return serverError('matchup_not_enough_countries', lang);
         }
 
-        // Decide wildcard (every 10 votes inject a random pairing)
-        const voteCount = sessionRes.Item.vote_count || 0;
-        const isWildcard = (voteCount > 0 && voteCount % 10 === 0);
+        // S-08: Wildcard fires on the (vote_count+1)th matchup when it's a multiple of 10
+        // i.e. every 10th vote triggers a wildcard on the next matchup request
+        const voteCount = session.vote_count || 0;
+        const isWildcard = voteCount > 0 && (voteCount + 1) % 10 === 0;
 
         // Pick country A randomly from full list
         const idxA = Math.floor(Math.random() * allCountries.length);
@@ -75,12 +101,16 @@ exports.handler = async (event) => {
 
         const matchupId = uuidv4();
 
-        // Store current matchup on session so vote can validate it
+        // S-04: Increment matchup_count_today + store current matchup
         await db.send(new UpdateCommand({
             TableName: SESSIONS_TABLE,
             Key: { session_id: sessionId },
-            UpdateExpression: 'SET current_matchup = :m',
-            ExpressionAttributeValues: { ':m': { matchup_id: matchupId, country_a: countryA.country_id, country_b: countryB.country_id } },
+            UpdateExpression: 'SET current_matchup = :m, matchup_count_today = :mc, matchup_date = :today',
+            ExpressionAttributeValues: {
+                ':m': { matchup_id: matchupId, country_a: countryA.country_id, country_b: countryB.country_id },
+                ':mc': matchupToday + 1,
+                ':today': today,
+            },
         }));
 
         const fmt = (country, listenRes) => ({
@@ -89,6 +119,7 @@ exports.handler = async (event) => {
             flag_url:     country.flag_url || null,
             anthem_name:  country.anthem_name || null,
             audio_url:    country.audio_url || null,
+            duration_ms:  country.duration_ms || null,
             elo_score:    country.elo_score || 1500,
             wins:         country.wins || 0,
             losses:       country.losses || 0,
@@ -106,3 +137,4 @@ exports.handler = async (event) => {
         return serverError(null, lang);
     }
 };
+

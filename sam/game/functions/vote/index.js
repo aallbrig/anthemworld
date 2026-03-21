@@ -12,16 +12,22 @@
  *   - Minimum ±0.25 ELO change ensures every genuine vote counts
  *   - vote_weight = listenWeight(winner) × listenWeight(loser)
  *
+ * Security mitigations:
+ *   S-01: listen_a_ms/listen_b_ms capped at 2× anthem duration_ms from rankings table
+ *   S-01: full_anthem flags ignored when listen_ms < anthem duration_ms
+ *   S-05: expired sessions rejected with 403
+ *   S-08: vote_count (lifetime) incremented so wildcard logic in /matchup works
+ *
  * On success:
  *   - Updates ELO scores (decimal, scaled by vote_weight, floored at ±0.25)
  *   - Stores vote record with ip_hash, voter_country, vote_category, week_id
- *   - Updates session vote count
+ *   - Updates session vote count (daily + lifetime)
  *   - Updates listen history
  *   - Returns updated ELO scores + vote_weight + vote_category
  *
  * Response 200: { vote_id, vote_weight, vote_category, winner: { ... }, loser: { ... } }
  * Response 400: bad request
- * Response 403: session not found
+ * Response 403: session not found / expired
  * Response 429: rate limited
  */
 const { GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
@@ -36,6 +42,9 @@ const RANKINGS_TABLE         = process.env.RANKINGS_TABLE;
 const VOTES_TABLE            = process.env.VOTES_TABLE;
 const LISTEN_TABLE           = process.env.LISTEN_TABLE;
 const MAX_VOTES_PER_SESSION  = parseInt(process.env.MAX_VOTES_PER_SESSION || '100', 10);
+
+/** Default max listen duration cap when ranking has no duration_ms (10 minutes). */
+const DEFAULT_MAX_DURATION_MS = 10 * 60 * 1000;
 
 /** ISO 8601 week identifier, e.g. "2026-W12". */
 function isoWeekId(date = new Date()) {
@@ -76,6 +85,12 @@ exports.handler = async (event) => {
 
         const session = sessionRes.Item;
 
+        // S-05: Reject expired sessions server-side
+        const now = Math.floor(Date.now() / 1000);
+        if (session.ttl && session.ttl < now) {
+            return forbidden('session_expired', null, lang);
+        }
+
         // Validate matchup ID matches the active one
         if (!session.current_matchup || session.current_matchup.matchup_id !== matchup_id) {
             return badRequest('vote_matchup_mismatch', null, lang);
@@ -91,11 +106,30 @@ exports.handler = async (event) => {
 
         // Rate limit: max votes per calendar day (UTC) per session
         const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-        const voteDate  = session.vote_date  || '';
         const voteToday = session.vote_date === today ? (session.vote_count_today || 0) : 0;
         if (voteToday >= MAX_VOTES_PER_SESSION) {
             return tooManyRequests('vote_limit_reached', 86400, lang, { max: MAX_VOTES_PER_SESSION });
         }
+
+        // Fetch rankings for both matchup countries to get duration_ms (needed for S-01 cap)
+        const [rankResA, rankResB] = await Promise.all([
+            db.send(new GetCommand({ TableName: RANKINGS_TABLE, Key: { country_id: country_a } })),
+            db.send(new GetCommand({ TableName: RANKINGS_TABLE, Key: { country_id: country_b } })),
+        ]);
+        const rankingsMap = {
+            [country_a]: rankResA.Item,
+            [country_b]: rankResB.Item,
+        };
+
+        // S-01: Cap submitted listen times at 2× anthem duration to prevent ELO inflation
+        const durationA = rankingsMap[country_a]?.duration_ms || DEFAULT_MAX_DURATION_MS;
+        const durationB = rankingsMap[country_b]?.duration_ms || DEFAULT_MAX_DURATION_MS;
+        const cappedListenA = Math.min(Math.max(0, listen_a_ms), 2 * durationA);
+        const cappedListenB = Math.min(Math.max(0, listen_b_ms), 2 * durationB);
+
+        // S-01: Only trust full_anthem flags when actual listen time meets anthem duration
+        const validFullAnthemA = !!full_anthem_a && cappedListenA >= durationA;
+        const validFullAnthemB = !!full_anthem_b && cappedListenB >= durationB;
 
         // Fetch session listen history for both countries
         const [listenWinnerRes, listenLoserRes] = await Promise.all([
@@ -106,26 +140,20 @@ exports.handler = async (event) => {
         const priorListenWinner = listenWinnerRes.Item?.total_listen_ms || 0;
         const priorListenLoser  = listenLoserRes.Item?.total_listen_ms  || 0;
 
-        // Determine the listen time submitted for each country in this matchup
-        // listen_a_ms is for country_a, listen_b_ms for country_b
-        const listenWinner = winner_id === country_a ? listen_a_ms : listen_b_ms;
-        const listenLoser  = loser_id  === country_a ? listen_a_ms : listen_b_ms;
+        // Map capped listen values to winner/loser
+        const cappedListenWinner = winner_id === country_a ? cappedListenA : cappedListenB;
+        const cappedListenLoser  = loser_id  === country_a ? cappedListenA : cappedListenB;
 
         // Compute cumulative listen time (prior history + this round)
-        const totalListenWinner = priorListenWinner + listenWinner;
-        const totalListenLoser  = priorListenLoser  + listenLoser;
+        const totalListenWinner = priorListenWinner + cappedListenWinner;
+        const totalListenLoser  = priorListenLoser  + cappedListenLoser;
 
-        // Fetch current ELO scores
-        const [winnerRankRes, loserRankRes] = await Promise.all([
-            db.send(new GetCommand({ TableName: RANKINGS_TABLE, Key: { country_id: winner_id } })),
-            db.send(new GetCommand({ TableName: RANKINGS_TABLE, Key: { country_id: loser_id  } })),
-        ]);
+        // Map validated full_anthem flags to winner/loser
+        const fullAnthemWinner = winner_id === country_a ? validFullAnthemA : validFullAnthemB;
+        const fullAnthemLoser  = loser_id  === country_a ? validFullAnthemA : validFullAnthemB;
 
-        const winnerElo = winnerRankRes.Item?.elo_score ?? INITIAL_ELO;
-        const loserElo  = loserRankRes.Item?.elo_score  ?? INITIAL_ELO;
-        // Determine full-anthem flags for winner/loser
-        const fullAnthemWinner = winner_id === country_a ? !!full_anthem_a : !!full_anthem_b;
-        const fullAnthemLoser  = loser_id  === country_a ? !!full_anthem_a : !!full_anthem_b;
+        const winnerElo = rankingsMap[winner_id]?.elo_score ?? INITIAL_ELO;
+        const loserElo  = rankingsMap[loser_id]?.elo_score  ?? INITIAL_ELO;
 
         const { winner: newWinnerElo, loser: newLoserElo, vote_weight, anthem_bonus,
                 vote_category, elo_delta_winner, elo_delta_loser } =
@@ -138,13 +166,17 @@ exports.handler = async (event) => {
         const ttl = Math.floor(Date.now() / 1000) + 90 * 24 * 3600;
         const listenTtl = Math.floor(Date.now() / 1000) + 24 * 3600;
 
+        // S-08: Increment both vote_count_today (daily cap) and vote_count (lifetime, used for wildcard)
+        const newVoteCount = (session.vote_count || 0) + 1;
+
         await Promise.all([
             // Store vote record with analytics fields
             db.send(new PutCommand({
                 TableName: VOTES_TABLE,
                 Item: {
                     vote_id: voteId, session_id, matchup_id, winner_id, loser_id,
-                    listen_a_ms, listen_b_ms, voted_at: votedAt, ttl,
+                    listen_a_ms: cappedListenA, listen_b_ms: cappedListenB,
+                    voted_at: votedAt, ttl,
                     ip_hash: session.ip_hash || null,
                     voter_country: session.user_country || null,
                     vote_weight, vote_category,
@@ -167,12 +199,16 @@ exports.handler = async (event) => {
                 UpdateExpression: 'SET elo_score = :e, losses = if_not_exists(losses, :z) + :one, updated_at = :t',
                 ExpressionAttributeValues: { ':e': newLoserElo, ':z': 0, ':one': 1, ':t': votedAt },
             })),
-            // Update session vote count (daily) + clear active matchup
+            // S-08: Update both lifetime vote_count and daily vote_count_today; clear active matchup
             db.send(new UpdateCommand({
                 TableName: SESSIONS_TABLE,
                 Key: { session_id },
-                UpdateExpression: 'SET vote_count_today = :new_count, vote_date = :today REMOVE current_matchup',
-                ExpressionAttributeValues: { ':new_count': voteToday + 1, ':today': today },
+                UpdateExpression: 'SET vote_count = :vc, vote_count_today = :new_count, vote_date = :today REMOVE current_matchup',
+                ExpressionAttributeValues: {
+                    ':vc': newVoteCount,
+                    ':new_count': voteToday + 1,
+                    ':today': today,
+                },
             })),
             // Update listen history for winner
             db.send(new UpdateCommand({
