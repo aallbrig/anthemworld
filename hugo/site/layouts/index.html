@@ -5,13 +5,5 @@
 {{ end }}
 
 {{ define "scripts" }}
-{{ if site.Params.gameApiBase }}
-<script>
-  (function() {
-    var el = document.getElementById('home-top3');
-    if (el) el.dataset.apiBase = {{ site.Params.gameApiBase | jsonify }};
-  }());
-</script>
-{{ end }}
 <script src="{{ "js/home-stats.js" | relURL }}"></script>
 {{ end }}

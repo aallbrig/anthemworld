@@ -13,9 +13,11 @@
     return translated ?? fallback ?? key;
   };
 
-  // API base must be set explicitly via data-api-base attribute on the container.
-  // This prevents spurious fetches in CI (Hugo runs on localhost but the game API doesn't).
-  const API = container.dataset.apiBase || '';
+  // Use the global GAME_API_URL (set in baseof.html with localhost auto-detection).
+  // Falls back to data-api-base for backward compatibility.
+  const API = (typeof window.GAME_API_URL !== 'undefined' && window.GAME_API_URL)
+    || container.dataset.apiBase
+    || '';
 
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
