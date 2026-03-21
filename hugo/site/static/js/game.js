@@ -591,12 +591,23 @@
     heardAnthemB = hasHeardAnthem(countryBId);
 
     // Populate card A
-    $('flag-a').src  = data.country_a.flag_url || '';
-    $('flag-a').alt  = data.country_a.name;
-    $('name-a').textContent   = data.country_a.name || countryAId;
-    $('anthem-a').textContent = data.country_a.anthem_name || '';
-    $('elo-a').textContent    = data.country_a.elo_score || 1500;
-    window.AnthemAudioWidget.configure($('audio-a'), {
+    const flagA = $('flag-a');
+    const nameA = $('name-a');
+    const anthemA = $('anthem-a');
+    const eloA = $('elo-a');
+    const audioA = $('audio-a');
+    const voteABtn = $('vote-a-btn');
+    if (!nameA || !flagA || !audioA) {
+      console.warn('renderMatchup: card-A DOM elements missing, retrying');
+      setTimeout(loadMatchup, 300);
+      return;
+    }
+    flagA.src  = data.country_a.flag_url || '';
+    flagA.alt  = data.country_a.name;
+    nameA.textContent   = data.country_a.name || countryAId;
+    if (anthemA) anthemA.textContent = data.country_a.anthem_name || '';
+    if (eloA) eloA.textContent    = data.country_a.elo_score || 1500;
+    window.AnthemAudioWidget.configure(audioA, {
       audioUrl: data.country_a.audio_url || '',
       audioFormat: data.country_a.audio_format || 'ogg',
       countryId: countryAId,
@@ -606,9 +617,9 @@
       countryUrl: `/countries/${String(countryAId || '').toLowerCase()}/`,
       listenSource: 'game',
       preload: 'metadata',
-      className: $('audio-a').className,
+      className: audioA.className,
     });
-    $('vote-a-btn').disabled  = false;
+    if (voteABtn) voteABtn.disabled  = false;
     if (listenAMs > 0) {
       const indA = $('listen-indicator-a');
       const timerA = $('listen-timer-a');
@@ -620,12 +631,23 @@
     }
 
     // Populate card B
-    $('flag-b').src  = data.country_b.flag_url || '';
-    $('flag-b').alt  = data.country_b.name;
-    $('name-b').textContent   = data.country_b.name || countryBId;
-    $('anthem-b').textContent = data.country_b.anthem_name || '';
-    $('elo-b').textContent    = data.country_b.elo_score || 1500;
-    window.AnthemAudioWidget.configure($('audio-b'), {
+    const flagB = $('flag-b');
+    const nameB = $('name-b');
+    const anthemB = $('anthem-b');
+    const eloB = $('elo-b');
+    const audioB = $('audio-b');
+    const voteBBtn = $('vote-b-btn');
+    if (!nameB || !flagB || !audioB) {
+      console.warn('renderMatchup: card-B DOM elements missing, retrying');
+      setTimeout(loadMatchup, 300);
+      return;
+    }
+    flagB.src  = data.country_b.flag_url || '';
+    flagB.alt  = data.country_b.name;
+    nameB.textContent   = data.country_b.name || countryBId;
+    if (anthemB) anthemB.textContent = data.country_b.anthem_name || '';
+    if (eloB) eloB.textContent    = data.country_b.elo_score || 1500;
+    window.AnthemAudioWidget.configure(audioB, {
       audioUrl: data.country_b.audio_url || '',
       audioFormat: data.country_b.audio_format || 'ogg',
       countryId: countryBId,
@@ -635,9 +657,9 @@
       countryUrl: `/countries/${String(countryBId || '').toLowerCase()}/`,
       listenSource: 'game',
       preload: 'metadata',
-      className: $('audio-b').className,
+      className: audioB.className,
     });
-    $('vote-b-btn').disabled  = false;
+    if (voteBBtn) voteBBtn.disabled  = false;
     if (listenBMs > 0) {
       const indB = $('listen-indicator-b');
       const timerB = $('listen-timer-b');
@@ -709,7 +731,9 @@
     voteCount++;
     voteCountEl.textContent = voteCount;
 
-    const winnerName = winnerId === countryAId ? $('name-a').textContent : $('name-b').textContent;
+    const winnerName = winnerId === countryAId
+      ? ($('name-a')?.textContent || countryAId)
+      : ($('name-b')?.textContent || countryBId);
     const eloChange  = body.winner.new_elo - body.winner.old_elo;
     const weightPct  = Math.round((body.vote_weight || 0) * 100);
     const anthemBonus = body.anthem_bonus ? ' 🏅' : '';
