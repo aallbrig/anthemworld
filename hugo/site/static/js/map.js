@@ -70,8 +70,18 @@ function loadCountryBoundaries() {
 
             // Re-color map when a popup closes (user may have listened)
             map.on('popupclose', refreshMapColors);
-            // Periodic refresh picks up cross-tab listening progress
-            setInterval(refreshMapColors, 15_000);
+
+            // React to listen-progress updates in near-real-time.
+            // Debounced so rapid timeupdate events (every ~250ms) batch into one redraw.
+            let refreshTimer = null;
+            function debouncedRefresh() {
+                clearTimeout(refreshTimer);
+                refreshTimer = setTimeout(refreshMapColors, 600);
+            }
+            document.addEventListener('aw:listen-progress', debouncedRefresh);
+
+            // Fallback poll for cross-tab / cross-source progress changes
+            setInterval(refreshMapColors, 5_000);
 
             // ListenProgress may have loaded before or after GeoJSON —
             // poll until it's ready, then do the first color pass.

@@ -187,6 +187,12 @@
     store[countryId] = merged;
     saveStore(store);
     syncLegacy(merged);
+    // Notify other components (e.g. the map) that progress changed for this country
+    if (global.document && update.add_listen_ms > 0) {
+      global.document.dispatchEvent(new global.CustomEvent('aw:listen-progress', {
+        detail: { countryId, record: merged }
+      }));
+    }
     // Queue for server sync when meaningful listen data changes
     if (update.add_listen_ms > 0 || update.heard_full_weight || update.heard_full_anthem) {
       queueSync(countryId);
