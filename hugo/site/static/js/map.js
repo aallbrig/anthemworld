@@ -72,6 +72,19 @@ function loadCountryBoundaries() {
             map.on('popupclose', refreshMapColors);
             // Periodic refresh picks up cross-tab listening progress
             setInterval(refreshMapColors, 15_000);
+
+            // ListenProgress may have loaded before or after GeoJSON —
+            // poll until it's ready, then do the first color pass.
+            let attempts = 0;
+            const waitForLP = setInterval(() => {
+                attempts++;
+                if (window.ListenProgress) {
+                    clearInterval(waitForLP);
+                    refreshMapColors();
+                } else if (attempts > 50) {
+                    clearInterval(waitForLP);
+                }
+            }, 100);
         })
         .catch(error => {
             console.error('Error loading country boundaries:', error);
@@ -94,6 +107,18 @@ function listenColor(progress) {
     return `rgb(${r},${g},${b})`;
 }
 
+/** Resolve a GeoJSON feature to an ISO alpha-3 code, using anthem data name lookup as fallback. */
+function featureIso(feature) {
+    const props = feature.properties;
+    const direct = (props.iso_a3 || props.ISO_A3 || props.id || '').toUpperCase();
+    if (direct && anthemData[direct]) return direct;
+    // Fallback: match by country name
+    const name = (props.name || props.ADMIN || props.NAME || '').toLowerCase();
+    const record = anthemByName[name];
+    if (record) return (record.iso_alpha3 || '').toUpperCase();
+    return direct;
+}
+
 function countryFillColor(isoCode) {
     if (!isoCode || !window.ListenProgress) return DEFAULT_FILL;
     const record = window.ListenProgress.get(isoCode.toUpperCase());
@@ -104,8 +129,8 @@ function countryFillColor(isoCode) {
 }
 
 function styleCountry(feature) {
-    const isoCode = (feature.properties.iso_a3 || feature.properties.ISO_A3 || feature.properties.id || '').toUpperCase();
-    const fill = countryFillColor(isoCode);
+    const iso = featureIso(feature);
+    const fill = countryFillColor(iso);
     return {
         fillColor: fill,
         weight: 1,
@@ -120,7 +145,7 @@ function refreshMapColors() {
     if (!countriesLayer) return;
     countriesLayer.eachLayer(function (layer) {
         if (!layer.feature) return;
-        const iso = (layer.feature.properties.iso_a3 || layer.feature.properties.ISO_A3 || layer.feature.properties.id || '').toUpperCase();
+        const iso = featureIso(layer.feature);
         const fill = countryFillColor(iso);
         layer.setStyle({
             fillColor: fill,
@@ -146,9 +171,8 @@ function onEachCountry(feature, layer) {
     });
 
     layer.on('mouseout', function(e) {
-        // Restore listen-aware fill instead of static default
         const target = e.target;
-        const iso = (target.feature.properties.iso_a3 || target.feature.properties.ISO_A3 || target.feature.properties.id || '').toUpperCase();
+        const iso = featureIso(target.feature);
         const fill = countryFillColor(iso);
         target.setStyle({
             fillColor: fill,
