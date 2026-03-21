@@ -61,7 +61,7 @@ description: "Discover, explore, and rank the national anthems of 193 UN-recogni
 <div class="row g-4 mb-5">
 
   <div class="col-md-5">
-    <h2>🏅 Current Top 3</h2>
+    <h2>🏅 Current Top 5</h2>
     <div id="home-top3">
       <div class="text-muted small">Loading rankings…</div>
     </div>
