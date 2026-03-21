@@ -187,8 +187,9 @@
     store[countryId] = merged;
     saveStore(store);
     syncLegacy(merged);
-    // Notify other components (e.g. the map) that progress changed for this country
-    if (global.document && update.add_listen_ms > 0) {
+    // Notify other components (e.g. the map) that progress changed for this country.
+    // Fires on timeupdate (max_position_ms > 0) and on flush (add_listen_ms > 0).
+    if (global.document && (update.add_listen_ms > 0 || update.max_position_ms > 0)) {
       global.document.dispatchEvent(new global.CustomEvent('aw:listen-progress', {
         detail: { countryId, record: merged }
       }));
