@@ -18,21 +18,37 @@
     return translated ?? fallback ?? key;
   };
 
-  // ─── localStorage helpers ──────────────────────────────────────────────────
-  // Tracks which country anthems the user has heard in full (played to the end).
-  // Key: "aw_heard_full:<ISO>"  Value: "1"
+  // ─── ListenProgress helpers ─────────────────────────────────────────────────
+  // Bridge to the site-wide ListenProgress store (aw_listen_progress_v1).
+  // Falls back to legacy aw_heard_full/aw_heard_anthem keys for backward compat.
   function markHeardFull(countryId) {
+    const lp = window.ListenProgress;
+    if (lp) {
+      lp.upsert(countryId, { heard_full_weight: true, add_listen_ms: 0 });
+    }
     try { localStorage.setItem(`aw_heard_full:${countryId}`, '1'); } catch (_) {}
   }
   function hasHeardFull(countryId) {
+    const lp = window.ListenProgress;
+    if (lp) {
+      const r = lp.get(countryId);
+      if (r?.heard_full_weight) return true;
+    }
     try { return localStorage.getItem(`aw_heard_full:${countryId}`) === '1'; } catch (_) { return false; }
   }
-  // Tracks which anthems the user has listened to in their entirety (full play).
-  // Separate from aw_heard_full (10 s) — this requires reaching the end.
   function markHeardAnthem(countryId) {
+    const lp = window.ListenProgress;
+    if (lp) {
+      lp.upsert(countryId, { heard_full_anthem: true, add_listen_ms: 0 });
+    }
     try { localStorage.setItem(`aw_heard_anthem:${countryId}`, '1'); } catch (_) {}
   }
   function hasHeardAnthem(countryId) {
+    const lp = window.ListenProgress;
+    if (lp) {
+      const r = lp.get(countryId);
+      if (r?.heard_full_anthem) return true;
+    }
     try { return localStorage.getItem(`aw_heard_anthem:${countryId}`) === '1'; } catch (_) { return false; }
   }
 

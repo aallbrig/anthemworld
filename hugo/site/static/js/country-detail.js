@@ -122,6 +122,9 @@
         show(document.getElementById('cd-audio-license'));
       }
       show(document.getElementById('cd-audio-card'));
+
+      // Show listen progress
+      renderListenStatus(c.iso_alpha3 || iso);
     } else {
       show(document.getElementById('cd-no-audio'));
     }
@@ -137,5 +140,34 @@
     // ── Show content, hide spinner ─────────────────────────────────────────
     hide(document.getElementById('country-loading'));
     show(document.getElementById('country-content'));
+  }
+
+  function renderListenStatus(countryId) {
+    const el = document.getElementById('cd-listen-status');
+    if (!el) return;
+    const lp = window.ListenProgress;
+    if (!lp) return;
+
+    function update() {
+      const record = lp.get(String(countryId).toUpperCase());
+      if (!record) { el.classList.add('d-none'); return; }
+      const pct = lp.progressPercent(record);
+      if (pct <= 0) { el.classList.add('d-none'); return; }
+
+      const barClass = pct >= 100 ? 'bg-success' : 'bg-warning';
+      const label = pct >= 100 ? '✓ Fully heard' : `${Math.round(pct)}% heard`;
+      el.innerHTML = `
+        <div class="d-flex align-items-center gap-2">
+          <div class="progress flex-grow-1" style="height:8px">
+            <div class="progress-bar ${barClass}" style="width:${Math.min(pct, 100)}%"></div>
+          </div>
+          <span class="badge ${pct >= 100 ? 'bg-success' : 'bg-warning text-dark'}">${label}</span>
+        </div>`;
+      el.classList.remove('d-none');
+    }
+
+    update();
+    // Refresh while user listens
+    setInterval(update, 2000);
   }
 })();

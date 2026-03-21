@@ -49,6 +49,23 @@
     });
   }
 
+  /**
+   * Return a small HTML badge string showing listen progress for a country.
+   * Returns '' if ListenProgress is unavailable or the country has no history.
+   */
+  function progressBadgeHTML(countryId) {
+    const lp = global.ListenProgress;
+    if (!lp || !countryId) return '';
+    const record = lp.get(String(countryId).toUpperCase());
+    if (!record) return '';
+    const pct = lp.progressPercent(record);
+    if (pct <= 0) return '';
+    if (record.heard_full_anthem || pct >= 100) {
+      return '<span class="badge bg-success ms-1" title="Fully heard">✓ Heard</span>';
+    }
+    return `<span class="badge bg-warning text-dark ms-1" title="${Math.round(pct)}% heard">${Math.round(pct)}%</span>`;
+  }
+
   function configure(audioEl, options = {}) {
     if (!audioEl) return null;
 
@@ -92,14 +109,16 @@
     if (dataset.countryUrl) attrs.push(`data-country-url="${esc(dataset.countryUrl)}"`);
     if (dataset.listenSource) attrs.push(`data-listen-source="${esc(dataset.listenSource)}"`);
 
-    return `<audio ${attrs.join(' ')}>
+    const badge = options.showBadge !== false ? progressBadgeHTML(dataset.countryId) : '';
+    return `<span class="aw-audio-widget">${badge}<audio ${attrs.join(' ')}>
       <source src="${esc(options.audioUrl)}" type="${esc(mimeFor(options.audioFormat))}">
-    </audio>`;
+    </audio></span>`;
   }
 
   global.AnthemAudioWidget = {
     configure,
     renderHTML,
+    progressBadgeHTML,
     mime: mimeFor,
   };
 }(typeof window !== 'undefined' ? window : globalThis));

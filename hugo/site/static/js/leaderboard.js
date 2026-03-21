@@ -42,16 +42,21 @@
     return `/countries/${encodeURIComponent(String(countryId).toLowerCase())}/`;
   }
 
+  function listenBadge(countryId) {
+    return window.AnthemAudioWidget?.progressBadgeHTML?.(countryId) || '';
+  }
+
   function renderRow(c) {
     const winRate = c.win_rate != null ? `${c.win_rate}%` : '—';
     const href = countryUrl(c.country_id);
+    const badge = listenBadge(c.country_id);
     const flag = c.flag_url
       ? `<img src="${escHtml(c.flag_url)}" alt="" style="height:20px;width:30px;object-fit:cover;border:1px solid #dee2e6" class="me-2">`
       : '<span style="display:inline-block;width:30px" class="me-2"></span>';
     const eloClass = c.elo_score >= 1600 ? 'bg-success' : c.elo_score >= 1500 ? 'bg-primary' : 'bg-secondary';
     return `<tr>
       <td class="text-center fw-bold text-muted">${medal(c.rank)}</td>
-      <td><a href="${escHtml(href)}" class="text-decoration-none">${flag}<span class="fw-semibold">${escHtml(c.name)}</span></a></td>
+      <td><a href="${escHtml(href)}" class="text-decoration-none">${flag}<span class="fw-semibold">${escHtml(c.name)}</span></a>${badge}</td>
       <td class="text-muted small">${c.anthem_name ? escHtml(c.anthem_name) : '—'}</td>
       <td class="text-center"><span class="badge ${eloClass}">${c.elo_score}</span></td>
       <td class="text-center text-success fw-semibold">${c.wins}</td>
