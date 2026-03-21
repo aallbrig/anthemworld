@@ -67,20 +67,66 @@ function loadCountryBoundaries() {
             }).addTo(map);
 
             console.log('✓ Loaded', data.features.length, 'countries');
+
+            // Re-color map when a popup closes (user may have listened)
+            map.on('popupclose', refreshMapColors);
+            // Periodic refresh picks up cross-tab listening progress
+            setInterval(refreshMapColors, 15_000);
         })
         .catch(error => {
             console.error('Error loading country boundaries:', error);
         });
 }
 
+const DEFAULT_FILL = '#0d6efd';     // Bootstrap primary blue
+const LISTEN_START  = [255, 193, 7]; // Bootstrap warning yellow
+const LISTEN_END    = [25, 135, 84]; // Bootstrap success green
+
+/**
+ * Interpolate between yellow and green based on a 0–1 progress value.
+ * 0 = yellow (just started), 1 = full green (complete anthem).
+ */
+function listenColor(progress) {
+    const p = Math.max(0, Math.min(1, progress));
+    const r = Math.round(LISTEN_START[0] + (LISTEN_END[0] - LISTEN_START[0]) * p);
+    const g = Math.round(LISTEN_START[1] + (LISTEN_END[1] - LISTEN_START[1]) * p);
+    const b = Math.round(LISTEN_START[2] + (LISTEN_END[2] - LISTEN_START[2]) * p);
+    return `rgb(${r},${g},${b})`;
+}
+
+function countryFillColor(isoCode) {
+    if (!isoCode || !window.ListenProgress) return DEFAULT_FILL;
+    const record = window.ListenProgress.get(isoCode.toUpperCase());
+    if (!record) return DEFAULT_FILL;
+    const pct = window.ListenProgress.progressPercent(record);
+    if (pct <= 0) return DEFAULT_FILL;
+    return listenColor(pct / 100);
+}
+
 function styleCountry(feature) {
+    const isoCode = (feature.properties.iso_a3 || feature.properties.ISO_A3 || feature.properties.id || '').toUpperCase();
+    const fill = countryFillColor(isoCode);
     return {
-        fillColor: '#0d6efd',
+        fillColor: fill,
         weight: 1,
         opacity: 1,
         color: 'white',
-        fillOpacity: 0.3
+        fillOpacity: fill === DEFAULT_FILL ? 0.3 : 0.55
     };
+}
+
+/** Re-apply listen-aware fill colors to every country on the map. */
+function refreshMapColors() {
+    if (!countriesLayer) return;
+    countriesLayer.eachLayer(function (layer) {
+        if (!layer.feature) return;
+        const iso = (layer.feature.properties.iso_a3 || layer.feature.properties.ISO_A3 || layer.feature.properties.id || '').toUpperCase();
+        const fill = countryFillColor(iso);
+        layer.setStyle({
+            fillColor: fill,
+            fillOpacity: fill === DEFAULT_FILL ? 0.3 : 0.55
+        });
+    });
 }
 
 function onEachCountry(feature, layer) {
@@ -94,13 +140,21 @@ function onEachCountry(feature, layer) {
     layer.on('mouseover', function(e) {
         const layer = e.target;
         layer.setStyle({
-            fillOpacity: 0.6,
+            fillOpacity: 0.7,
             weight: 2
         });
     });
 
     layer.on('mouseout', function(e) {
-        countriesLayer.resetStyle(e.target);
+        // Restore listen-aware fill instead of static default
+        const target = e.target;
+        const iso = (target.feature.properties.iso_a3 || target.feature.properties.ISO_A3 || target.feature.properties.id || '').toUpperCase();
+        const fill = countryFillColor(iso);
+        target.setStyle({
+            fillColor: fill,
+            fillOpacity: fill === DEFAULT_FILL ? 0.3 : 0.55,
+            weight: 1
+        });
     });
 
     layer.bindTooltip(countryName, {
