@@ -126,7 +126,7 @@
         <td>${esc(item.anthem_name)}</td>
         <td><span class="badge ${statusClass}">${esc(item.status_label)}</span></td>
         <td style="min-width:180px">
-          <div class="small fw-semibold">${item.heard_full_anthem ? 'Fully heard' : `${anthemProgress}% of anthem reached`}</div>
+          <div class="small fw-semibold">${anthemProgress}% of anthem reached</div>
           <div class="progress" style="height:6px">
             <div class="progress-bar ${item.heard_full_anthem ? 'bg-warning' : 'bg-primary'}" role="progressbar" style="width:${anthemProgress}%"></div>
           </div>
