@@ -28,7 +28,7 @@ description: "Discover, explore, and rank the national anthems of 193 UN-recogni
         <div class="display-5 mb-2">🎵</div>
         <h5 class="card-title">Anthem Battle</h5>
         <p class="card-text text-muted small">Listen to two national anthems and vote for your favourite. ELO rankings update in real time.</p>
-        <a href="/game/" class="btn btn-primary btn-sm">Play Now</a>
+        <a href="/game/" class="btn btn-outline-primary btn-sm">Play Now</a>
       </div>
     </div>
   </div>
