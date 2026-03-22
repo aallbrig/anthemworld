@@ -58,7 +58,7 @@
       <td class="text-center fw-bold text-muted">${medal(c.rank)}</td>
       <td><a href="${escHtml(href)}" class="text-decoration-none">${flag}<span class="fw-semibold">${escHtml(c.name)}</span></a>${badge}</td>
       <td class="text-muted small">${c.anthem_name ? escHtml(c.anthem_name) : '—'}</td>
-      <td class="text-center"><span class="badge ${eloClass}">${c.elo_score}</span></td>
+      <td class="text-center"><span class="badge ${eloClass}">${Number(c.elo_score).toFixed(2)}</span></td>
       <td class="text-center text-success fw-semibold">${c.wins}</td>
       <td class="text-center text-danger">${c.losses}</td>
       <td class="text-center">${winRate}</td>

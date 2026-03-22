@@ -622,7 +622,7 @@
     flagA.alt  = data.country_a.name;
     nameA.textContent   = data.country_a.name || countryAId;
     if (anthemA) anthemA.textContent = data.country_a.anthem_name || '';
-    if (eloA) eloA.textContent    = data.country_a.elo_score || 1500;
+    if (eloA) eloA.textContent    = Number(data.country_a.elo_score || 1500).toFixed(2);
     window.AnthemAudioWidget.configure(audioA, {
       audioUrl: data.country_a.audio_url || '',
       audioFormat: data.country_a.audio_format || 'ogg',
@@ -662,8 +662,7 @@
     flagB.alt  = data.country_b.name;
     nameB.textContent   = data.country_b.name || countryBId;
     if (anthemB) anthemB.textContent = data.country_b.anthem_name || '';
-    if (eloB) eloB.textContent    = data.country_b.elo_score || 1500;
-    window.AnthemAudioWidget.configure(audioB, {
+    if (eloB) eloB.textContent    = Number(data.country_b.elo_score || 1500).toFixed(2);    window.AnthemAudioWidget.configure(audioB, {
       audioUrl: data.country_b.audio_url || '',
       audioFormat: data.country_b.audio_format || 'ogg',
       countryId: countryBId,

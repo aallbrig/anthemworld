@@ -58,7 +58,7 @@
             ${flag}
             <span class="fw-semibold">${escHtml(c.name)}</span>
           </a>${anthem}
-          <span class="ms-auto badge bg-primary">${c.elo_score}</span>
+          <span class="ms-auto badge bg-primary">${Number(c.elo_score).toFixed(2)}</span>
         </div>`;
       }).join('');
     } catch {
