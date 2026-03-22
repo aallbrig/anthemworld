@@ -50,16 +50,16 @@ test.describe('Leaderboard page', () => {
     expect(generated.trim().length).toBeGreaterThan(0);
   });
 
-  test('limit selector re-fetches and changes row count', async ({ page }) => {
+  test('shows all countries without a limit selector', async ({ page }) => {
     await page.goto(LB_URL);
     await expect(page.locator('#leaderboard-table-wrap')).toBeVisible({ timeout: 30_000 });
 
-    // Switch to 25 and wait for the table to re-render (≤25 rows)
-    await page.locator('#leaderboard-limit').selectOption('25');
-    await expect(page.locator('#leaderboard-tbody tr').nth(0)).toBeVisible({ timeout: 15_000 });
-    const rowsAfter = await page.locator('#leaderboard-tbody tr').count();
-    expect(rowsAfter).toBeLessThanOrEqual(25);
-    expect(rowsAfter).toBeGreaterThan(0);
+    // No limit selector should exist
+    await expect(page.locator('#leaderboard-limit')).toHaveCount(0);
+
+    // Should show all ranked countries (more than 50)
+    const rowCount = await page.locator('#leaderboard-tbody tr').count();
+    expect(rowCount).toBeGreaterThan(50);
   });
 
   test('shows error panel when API is unreachable', async ({ page }) => {

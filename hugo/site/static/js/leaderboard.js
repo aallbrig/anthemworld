@@ -21,7 +21,7 @@
   const tableWrap = document.getElementById('leaderboard-table-wrap');
   const tbody     = document.getElementById('leaderboard-tbody');
   const empty     = document.getElementById('leaderboard-empty');
-  const limitSel  = document.getElementById('leaderboard-limit');
+  // Show all countries — no limit selector
 
   function show(el) { el.classList.remove('d-none'); }
   function hide(el) { el.classList.add('d-none'); }
@@ -80,10 +80,8 @@
     const voteStatsEl = document.getElementById('vote-stats');
     if (voteStatsEl) hide(voteStatsEl);
 
-    const limit = limitSel ? limitSel.value : 50;
-
     try {
-      const res = await fetch(`${API}/leaderboard?limit=${limit}&stats=true`);
+      const res = await fetch(`${API}/leaderboard?limit=999&stats=true`);
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
       const data = await res.json();
 
@@ -154,9 +152,6 @@
   function pctNum(n, total) {
     return total > 0 ? ((n / total) * 100).toFixed(1) : 0;
   }
-
-  // Re-fetch when limit changes
-  if (limitSel) limitSel.addEventListener('change', load);
 
   // Retry button
   if (retryBtn) retryBtn.addEventListener('click', load);

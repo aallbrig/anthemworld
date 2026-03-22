@@ -11,14 +11,6 @@ function t(key, vars = {}, fallback = '') {
     return translated ?? fallback ?? key;
 }
 
-function listenPct(iso) {
-    const lp = window.ListenProgress;
-    if (!lp) return 0;
-    const record = lp.get(String(iso).toUpperCase());
-    if (!record) return 0;
-    return Math.round(lp.progressPercent(record));
-}
-
 function initCountriesTable() {
     fetch('/data/anthems.json')
         .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
@@ -64,7 +56,6 @@ function renderTable(data) {
                 audioFile ? audioFile.url : '', // col 7: audio url
                 audioFile ? (audioFile.format || 'ogg') : '', // col 8: audio format
                 isoKey,                    // col 9: iso alpha-3
-                listenPct(isoKey),         // col 10: listen progress %
             ]);
         }
     }
@@ -110,12 +101,6 @@ function renderTable(data) {
             }},
             { title: t('countries_column_audio_format'), visible: false },  // 8 - used by Audio render
             { title: 'ISO', visible: false },                               // 9 - used by audio metadata
-            { title: 'Listened', className: 'text-center', render: (d) => {
-                const pct = Number(d) || 0;
-                if (pct <= 0) return '<span class="text-muted">—</span>';
-                if (pct >= 100) return '<span class="badge bg-success">✓ Heard</span>';
-                return `<span class="badge bg-warning text-dark">${pct}%</span>`;
-            }},                                                             // 10 - listen progress
         ],
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, t('datatable_all')]],
