@@ -758,9 +758,9 @@
     showFlash('success',
       t('game_flash_vote_success_html', {
         winner: winnerName,
-        old: body.winner.old_elo,
-        new: body.winner.new_elo,
-        delta: eloChange,
+        old: Number(body.winner.old_elo).toFixed(2),
+        new: Number(body.winner.new_elo).toFixed(2),
+        delta: eloChange >= 0 ? eloChange.toFixed(2) : eloChange.toFixed(2),
         note: weightNote,
       })
     );
