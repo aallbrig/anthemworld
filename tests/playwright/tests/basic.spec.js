@@ -37,6 +37,8 @@ test.describe('Basic Site Tests', () => {
       if (msg.type() === 'error') {
         const text = msg.text();
         if (text.includes('ERR_CONNECTION_REFUSED') || text.includes('NS_ERROR_CONNECTION_REFUSED')) return;
+        // Ignore CORS errors from optional game API (not running in CI)
+        if (text.includes('localhost:3001')) return;
         consoleErrors.push(text);
       }
     });
@@ -60,6 +62,8 @@ test.describe('Basic Site Tests', () => {
       if (msg.type() === 'error') {
         const text = msg.text();
         if (text.includes('ERR_CONNECTION_REFUSED') || text.includes('NS_ERROR_CONNECTION_REFUSED')) return;
+        // Ignore CORS errors from optional game API (not running in CI)
+        if (text.includes('localhost:3001')) return;
         consoleErrors.push(text);
       }
     });
@@ -104,6 +108,10 @@ test.describe('Basic Site Tests', () => {
       if (errorText === 'NS_BINDING_ABORTED' || errorText === 'net::ERR_ABORTED') return;
       // ERR_CONNECTION_REFUSED = optional service (game API) not running — expected in CI
       if (errorText.includes('ERR_CONNECTION_REFUSED') || errorText.includes('NS_ERROR_CONNECTION_REFUSED')) return;
+      // NS_ERROR_DOM_BAD_URI = Firefox CORS block for unreachable origins — expected in CI
+      if (errorText.includes('NS_ERROR_DOM_BAD_URI')) return;
+      // Ignore requests to the optional game API (not running in CI)
+      if (request.url().includes('localhost:3001')) return;
       failedRequests.push({
         url: request.url(),
         failure: request.failure()

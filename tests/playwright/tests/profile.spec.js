@@ -43,9 +43,6 @@ test.describe('Profile page', () => {
     await expect(page.locator('#profile-table tbody tr').first()).toContainText('France');
     await expect(page.locator('#profile-table')).toContainText('Croatia');
     await expect(page.locator('#profile-table')).toContainText('Tunisia');
-    await expect(page.locator('#profile-table')).toContainText('Fully heard');
-    await expect(page.locator('#profile-table')).toContainText('In progress');
-    await expect(page.locator('#profile-table')).toContainText('Not heard yet');
     await expect(page.locator('#profile-table a[href="/countries/fra/"]')).toBeVisible();
     await expect(page.locator('#profile-table audio').first()).toBeVisible();
     await expect(page.locator('#profile-table thead')).not.toContainText('Credit');

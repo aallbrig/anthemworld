@@ -19,10 +19,12 @@ const ASYNC_SETTLE_MS = 1000;
 const IGNORE_STRINGS = [
   'ERR_CONNECTION_REFUSED',
   'NS_ERROR_CONNECTION_REFUSED',
+  'NS_ERROR_DOM_BAD_URI',       // Firefox CORS block for unreachable origins
   'NS_BINDING_ABORTED',
   'net::ERR_ABORTED',
   'NS_ERROR_PARSED_DATA_CACHED', // Firefox fires this when a media resource is served from cache
   'localhost:3001',
+  'Leaderboard fetch failed',    // Expected when game API is not running
 ];
 
 function isIgnored(text) {
