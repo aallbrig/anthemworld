@@ -36,6 +36,7 @@ const db = require('../shared/db');
 const { updateElo, INITIAL_ELO } = require('../shared/elo');
 const { ok, badRequest, forbidden, tooManyRequests, serverError, options } = require('../shared/response');
 const { detectLanguage } = require('../shared/messages');
+const { isoWeekId } = require('../shared/week');
 
 const SESSIONS_TABLE         = process.env.SESSIONS_TABLE;
 const RANKINGS_TABLE         = process.env.RANKINGS_TABLE;
@@ -45,15 +46,6 @@ const MAX_VOTES_PER_SESSION  = parseInt(process.env.MAX_VOTES_PER_SESSION || '10
 
 /** Default max listen duration cap when ranking has no duration_ms (10 minutes). */
 const DEFAULT_MAX_DURATION_MS = 10 * 60 * 1000;
-
-/** ISO 8601 week identifier, e.g. "2026-W12". */
-function isoWeekId(date = new Date()) {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-}
 
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();

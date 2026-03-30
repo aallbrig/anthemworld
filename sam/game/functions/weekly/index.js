@@ -16,25 +16,27 @@ const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const db = require('../shared/db');
 const { ok, serverError, options } = require('../shared/response');
 const { detectLanguage } = require('../shared/messages');
+const { isoWeekId } = require('../shared/week');
 
 const VOTES_TABLE    = process.env.VOTES_TABLE;
 const RANKINGS_TABLE = process.env.RANKINGS_TABLE;
 
-function currentWeekId() {
-    const d = new Date();
-    const utc = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    utc.setUTCDate(utc.getUTCDate() + 4 - (utc.getUTCDay() || 7));
-    const yearStart = new Date(Date.UTC(utc.getUTCFullYear(), 0, 1));
-    const weekNo = Math.ceil(((utc - yearStart) / 86400000 + 1) / 7);
-    return `${utc.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-}
+// Module-level cache: keyed by week_id, TTL 5 minutes
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const cache = new Map();
 
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
     const lang = detectLanguage(event.headers);
 
     const qs     = event.queryStringParameters || {};
-    const weekId = qs.week_id || currentWeekId();
+    const weekId = qs.week_id || isoWeekId();
+
+    // Return cached response if available
+    const cached = cache.get(weekId);
+    if (cached && Date.now() < cached.expiresAt) {
+        return ok({ ...cached.body, cache_hit: true });
+    }
 
     try {
         // Scan all votes (paginated) and filter by week_id
@@ -106,7 +108,9 @@ exports.handler = async (event) => {
                 losses: data.losses,
             }));
 
-        return ok({ week_id: weekId, winners, stats });
+        const result = { week_id: weekId, winners, stats, cache_hit: false };
+        cache.set(weekId, { body: result, expiresAt: Date.now() + CACHE_TTL_MS });
+        return ok(result);
     } catch (err) {
         console.error('weekly error:', err);
         return serverError(null, lang);

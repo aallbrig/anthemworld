@@ -20,6 +20,10 @@ const CATALOG = {
         vote_matchup_mismatch: 'matchup_id does not match your current matchup. Request a new matchup first.',
         vote_pair_mismatch: 'winner_id/loser_id do not match matchup countries.',
         vote_limit_reached: 'Maximum {max} votes per day reached. Come back tomorrow!',
+        listen_invalid_json: 'Invalid JSON body',
+        listen_session_required: 'session_id is required',
+        listen_events_required: 'events array is required and must not be empty',
+        listen_too_many_events: 'Maximum {max} events per request',
         listen_invalid_country_id: 'country_id must be a 2–3 letter ISO country code',
     },
     es: {
@@ -40,6 +44,10 @@ const CATALOG = {
         vote_matchup_mismatch: 'matchup_id no coincide con tu enfrentamiento actual. Solicita primero un nuevo enfrentamiento.',
         vote_pair_mismatch: 'winner_id/loser_id no coinciden con los países del enfrentamiento.',
         vote_limit_reached: 'Se alcanzó el máximo de {max} votos por día. ¡Vuelve mañana!',
+        listen_invalid_json: 'El cuerpo JSON no es válido',
+        listen_session_required: 'session_id es obligatorio',
+        listen_events_required: 'El arreglo de eventos es obligatorio y no puede estar vacío',
+        listen_too_many_events: 'Máximo {max} eventos por solicitud',
         listen_invalid_country_id: 'country_id debe ser un código ISO de país de 2 o 3 letras',
     },
 };
