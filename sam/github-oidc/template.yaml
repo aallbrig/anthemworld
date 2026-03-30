@@ -85,6 +85,7 @@ Resources:
                   - cloudformation:DeleteChangeSet
                 Resource:
                   - !Sub arn:aws:cloudformation:*:${AWS::AccountId}:stack/anthemworld-*/*
+                  - arn:aws:cloudformation:*:aws:transform/Serverless-2016-10-31
 
               # S3 — SAM artifacts + static site bucket
               - Sid: S3
