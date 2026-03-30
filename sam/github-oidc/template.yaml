@@ -161,6 +161,8 @@ Resources:
                   - dynamodb:ListTagsOfResource
                   - dynamodb:DescribeTimeToLive
                   - dynamodb:UpdateTimeToLive
+                  - dynamodb:UpdateContinuousBackups
+                  - dynamodb:DescribeContinuousBackups
                 Resource:
                   - !Sub arn:aws:dynamodb:*:${AWS::AccountId}:table/anthem-*
 
