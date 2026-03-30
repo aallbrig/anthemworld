@@ -1,0 +1,201 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  GitHub Actions OIDC provider and deploy role for anthemworld.
+  No account IDs are hardcoded — uses AWS::AccountId pseudo-parameter.
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Default: aallbrig
+    Description: GitHub username or organisation
+  GitHubRepo:
+    Type: String
+    Default: anthemworld
+    Description: GitHub repository name
+  OIDCProviderExists:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: >
+      Set to "true" if the GitHub OIDC provider already exists in this
+      account (e.g. another repo created it). Only one provider per
+      issuer URL is allowed per account.
+
+Conditions:
+  CreateOIDCProvider: !Equals [!Ref OIDCProviderExists, "false"]
+
+Resources:
+  # ── GitHub OIDC Identity Provider ──────────────────────────────────
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateOIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        # GitHub's OIDC thumbprint (AWS validates via root CA, so this
+        # value is not security-critical but is required by the API).
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+
+  # ── Deploy IAM Role ────────────────────────────────────────────────
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: anthemworld-deploy
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - CreateOIDCProvider
+                - !GetAtt GitHubOIDCProvider.Arn
+                - !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  - !Sub repo:${GitHubOrg}/${GitHubRepo}:*
+      Policies:
+        - PolicyName: anthemworld-deploy-permissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # SAM / CloudFormation
+              - Sid: CloudFormation
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResource
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:GetTemplate
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:ListStackResources
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
+                Resource:
+                  - !Sub arn:aws:cloudformation:*:${AWS::AccountId}:stack/anthemworld-*/*
+
+              # S3 — SAM artifacts + static site bucket
+              - Sid: S3
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                  - s3:CreateBucket
+                  - s3:PutBucketPolicy
+                  - s3:GetBucketPolicy
+                Resource:
+                  - !Sub arn:aws:s3:::anthemworld-*
+                  - !Sub arn:aws:s3:::anthemworld-*/*
+                  - !Sub arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-*
+                  - !Sub arn:aws:s3:::aws-sam-cli-managed-default-samclisourcebucket-*/*
+
+              # Lambda
+              - Sid: Lambda
+                Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:DeleteFunction
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:ListTags
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:PublishVersion
+                  - lambda:CreateAlias
+                  - lambda:UpdateAlias
+                  - lambda:DeleteAlias
+                Resource:
+                  - !Sub arn:aws:lambda:*:${AWS::AccountId}:function:anthemworld-*
+
+              # API Gateway
+              - Sid: ApiGateway
+                Effect: Allow
+                Action:
+                  - apigateway:GET
+                  - apigateway:POST
+                  - apigateway:PUT
+                  - apigateway:PATCH
+                  - apigateway:DELETE
+                Resource:
+                  - !Sub arn:aws:apigateway:*::/restapis*
+                  - !Sub arn:aws:apigateway:*::/apis*
+                  - !Sub arn:aws:apigateway:*::/tags*
+
+              # DynamoDB
+              - Sid: DynamoDB
+                Effect: Allow
+                Action:
+                  - dynamodb:CreateTable
+                  - dynamodb:DeleteTable
+                  - dynamodb:DescribeTable
+                  - dynamodb:UpdateTable
+                  - dynamodb:PutItem
+                  - dynamodb:GetItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:TagResource
+                  - dynamodb:UntagResource
+                  - dynamodb:ListTagsOfResource
+                  - dynamodb:DescribeTimeToLive
+                  - dynamodb:UpdateTimeToLive
+                Resource:
+                  - !Sub arn:aws:dynamodb:*:${AWS::AccountId}:table/anthem-*
+
+              # IAM — for SAM-managed Lambda execution roles
+              - Sid: IAM
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:PassRole
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                Resource:
+                  - !Sub arn:aws:iam::${AWS::AccountId}:role/anthemworld-*
+
+              # CloudFront — cache invalidation
+              - Sid: CloudFront
+                Effect: Allow
+                Action:
+                  - cloudfront:CreateInvalidation
+                  - cloudfront:GetInvalidation
+                Resource: "*"
+
+Outputs:
+  DeployRoleArn:
+    Description: ARN of the deploy role — use the account ID portion as the GitHub secret
+    Value: !GetAtt DeployRole.Arn
+  OIDCProviderArn:
+    Description: ARN of the GitHub OIDC provider
+    Value: !If
+      - CreateOIDCProvider
+      - !GetAtt GitHubOIDCProvider.Arn
+      - !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
