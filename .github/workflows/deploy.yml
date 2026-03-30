@@ -105,10 +105,11 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Build site
+        env:
+          HUGO_PARAMS_GAMEAPIBASE: ${{ needs.deploy-api.outputs.api_url }}
         run: |
           hugo --minify \
-            --baseURL "${{ vars.PRODUCTION_DOMAIN }}/" \
-            --params.gameApiBase="${{ needs.deploy-api.outputs.api_url }}"
+            --baseURL "${{ vars.PRODUCTION_DOMAIN }}/"
 
       - name: Sync to S3
         run: |
