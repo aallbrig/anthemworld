@@ -16,7 +16,7 @@ Globals:
         MAX_VOTES_PER_SESSION: "100"
         MAX_SESSIONS_PER_IP:   "5"
         MAX_MATCHUPS_PER_SESSION: "300"
-        CORS_ORIGIN:     "*"
+        CORS_ORIGIN:     !Ref CorsOrigin
         LOCAL_DYNAMODB_ENDPOINT: ""
         AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1"
         AWS_REGION_OVERRIDE: ""  # placeholder so env.local.json can set AWS_REGION
@@ -26,6 +26,10 @@ Parameters:
     Type: String
     Default: local
     AllowedValues: [local, dev, prod]
+  CorsOrigin:
+    Type: String
+    Default: "*"
+    Description: Allowed CORS origin (set to your domain in production)
 
 Resources:
 
@@ -37,7 +41,7 @@ Resources:
       Cors:
         AllowMethods: "'GET,POST,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Session-Id'"
-        AllowOrigin: "'*'"
+        AllowOrigin: !Sub "'${CorsOrigin}'"
       # S-02: Throttle all routes to prevent DDoS / cost runaway
       MethodSettings:
         - HttpMethod: '*'
@@ -177,18 +181,9 @@ Resources:
       AttributeDefinitions:
         - AttributeName: country_id
           AttributeType: S
-        - AttributeName: elo_score
-          AttributeType: N
       KeySchema:
         - AttributeName: country_id
           KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: elo-index
-          KeySchema:
-            - AttributeName: elo_score
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
 
   VotesTable:
     Type: AWS::DynamoDB::Table

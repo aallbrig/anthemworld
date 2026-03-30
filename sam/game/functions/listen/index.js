@@ -86,7 +86,7 @@ exports.handler = async (event) => {
         const ttl = Math.floor(Date.now() / 1000) + 24 * 3600;
         let updated = 0;
 
-        // Process each listen event
+        // Process each listen event (single write per event)
         const updates = events
             .filter(e => e.country_id && typeof e.total_listen_ms === 'number')
             .slice(0, MAX_EVENTS)
@@ -98,62 +98,49 @@ exports.handler = async (event) => {
                 const maxAllowedMs = 2 * (durationMap[countryId] || DEFAULT_MAX_DURATION_MS);
                 const cappedListenMs = Math.min(Math.max(0, e.total_listen_ms), maxAllowedMs);
 
-                await db.send(new UpdateCommand({
-                    TableName: LISTEN_TABLE,
-                    Key: { pk },
-                    UpdateExpression: [
-                        'SET total_listen_ms = if_not_exists(total_listen_ms, :zero)',
-                        'max_position_ms = if_not_exists(max_position_ms, :zero)',
-                        'duration_ms = if_not_exists(duration_ms, :zero)',
-                        'heard_full_weight = if_not_exists(heard_full_weight, :false)',
-                        'heard_full_anthem = if_not_exists(heard_full_anthem, :false)',
-                        'updated_at = :now',
-                        '#ttl = :ttl',
-                    ].join(', '),
-                    ExpressionAttributeNames: { '#ttl': 'ttl' },
-                    ExpressionAttributeValues: {
-                        ':zero': 0,
-                        ':false': false,
-                        ':now': new Date().toISOString(),
-                        ':ttl': ttl,
-                    },
-                }));
+                const setParts = [
+                    'total_listen_ms = :tlm',
+                    'updated_at = :now',
+                    '#ttl = :ttl',
+                ];
+                const values = {
+                    ':tlm': cappedListenMs,
+                    ':now': new Date().toISOString(),
+                    ':ttl': ttl,
+                };
 
-                // Second pass: update with capped/max values
-                const updateParts = [];
-                const names = {};
-                const values = {};
-
-                if (cappedListenMs > 0) {
-                    updateParts.push('total_listen_ms = :tlm');
-                    values[':tlm'] = cappedListenMs;
-                }
                 if (e.max_position_ms > 0) {
-                    updateParts.push('max_position_ms = :mpm');
+                    setParts.push('max_position_ms = :mpm');
                     values[':mpm'] = Math.max(0, e.max_position_ms);
                 }
                 if (e.duration_ms > 0) {
-                    updateParts.push('duration_ms = :dm');
+                    setParts.push('duration_ms = :dm');
                     values[':dm'] = Math.max(0, e.duration_ms);
                 }
+                // Boolean flags: set true when client says true, otherwise
+                // preserve existing value (if_not_exists defaults new items).
                 if (e.heard_full_weight) {
-                    updateParts.push('heard_full_weight = :true');
-                    values[':true'] = true;
+                    setParts.push('heard_full_weight = :true_fw');
+                    values[':true_fw'] = true;
+                } else {
+                    setParts.push('heard_full_weight = if_not_exists(heard_full_weight, :false_fw)');
+                    values[':false_fw'] = false;
                 }
                 if (e.heard_full_anthem) {
-                    updateParts.push('heard_full_anthem = :hfa');
-                    values[':hfa'] = true;
+                    setParts.push('heard_full_anthem = :true_fa');
+                    values[':true_fa'] = true;
+                } else {
+                    setParts.push('heard_full_anthem = if_not_exists(heard_full_anthem, :false_fa)');
+                    values[':false_fa'] = false;
                 }
 
-                if (updateParts.length > 0) {
-                    await db.send(new UpdateCommand({
-                        TableName: LISTEN_TABLE,
-                        Key: { pk },
-                        UpdateExpression: `SET ${updateParts.join(', ')}`,
-                        ...(Object.keys(names).length ? { ExpressionAttributeNames: names } : {}),
-                        ExpressionAttributeValues: values,
-                    }));
-                }
+                await db.send(new UpdateCommand({
+                    TableName: LISTEN_TABLE,
+                    Key: { pk },
+                    UpdateExpression: `SET ${setParts.join(', ')}`,
+                    ExpressionAttributeNames: { '#ttl': 'ttl' },
+                    ExpressionAttributeValues: values,
+                }));
 
                 updated++;
             });
