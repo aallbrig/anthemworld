@@ -3,6 +3,7 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   id-token: write   # Required for OIDC
@@ -51,11 +52,17 @@ jobs:
       - name: SAM build
         run: sam build
 
+      - name: Ensure SAM artifacts bucket exists
+        run: |
+          aws s3api head-bucket --bucket anthemworld-sam-artifacts 2>/dev/null || \
+            aws s3 mb s3://anthemworld-sam-artifacts --region ${{ vars.AWS_REGION }}
+
       - name: SAM deploy
         run: |
           sam deploy \
             --stack-name anthemworld-game-prod \
-            --resolve-s3 \
+            --s3-bucket anthemworld-sam-artifacts \
+            --s3-prefix game \
             --capabilities CAPABILITY_IAM \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \

@@ -85,7 +85,6 @@ Resources:
                   - cloudformation:DeleteChangeSet
                 Resource:
                   - !Sub arn:aws:cloudformation:*:${AWS::AccountId}:stack/anthemworld-*/*
-                  - !Sub arn:aws:cloudformation:*:${AWS::AccountId}:stack/aws-sam-cli-managed-default/*
 
               # S3 — SAM artifacts + static site bucket
               - Sid: S3
@@ -99,8 +98,6 @@ Resources:
                   - s3:CreateBucket
                   - s3:PutBucketPolicy
                   - s3:GetBucketPolicy
-                  - s3:PutBucketVersioning
-                  - s3:PutEncryptionConfiguration
                 Resource:
                   - !Sub arn:aws:s3:::anthemworld-*
                   - !Sub arn:aws:s3:::anthemworld-*/*
