@@ -1,0 +1,153 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write   # Required for OIDC
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false  # Never cancel a running deploy
+
+jobs:
+  # ── Gate: run existing CI checks first ──────────────────────────────
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  # ── Deploy game backend (SAM) ──────────────────────────────────────
+  deploy-api:
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: sam/game
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install SAM CLI
+        run: pip install aws-sam-cli
+
+      - name: Install Lambda dependencies
+        run: cd functions && npm ci --omit=dev
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/anthemworld-deploy
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: SAM build
+        run: sam build
+
+      - name: SAM deploy
+        run: |
+          sam deploy \
+            --stack-name anthemworld-game-prod \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              Stage=prod \
+              CorsOrigin=${{ vars.PRODUCTION_DOMAIN }}
+
+      - name: Export API URL
+        id: api-url
+        run: |
+          URL=$(aws cloudformation describe-stacks \
+            --stack-name anthemworld-game-prod \
+            --query 'Stacks[0].Outputs[?OutputKey==`GameApiUrl`].OutputValue' \
+            --output text)
+          echo "api_url=${URL}" >> "$GITHUB_OUTPUT"
+
+    outputs:
+      api_url: ${{ steps.api-url.outputs.api_url }}
+
+  # ── Deploy static site (Hugo -> S3 -> CloudFront) ──────────────────
+  deploy-site:
+    needs: [ci, deploy-api]
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: hugo/site
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Hugo
+        uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: latest
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/anthemworld-deploy
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Build site
+        run: |
+          hugo --minify \
+            --baseURL "${{ vars.PRODUCTION_DOMAIN }}/" \
+            --params.gameApiBase="${{ needs.deploy-api.outputs.api_url }}"
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync public/ "s3://${{ vars.SITE_BUCKET }}" \
+            --delete \
+            --cache-control "public, max-age=3600" \
+            --exclude "data/*" \
+            --exclude "js/*"
+
+          # Long-cache static data and JS (rarely changing)
+          aws s3 sync public/data/ "s3://${{ vars.SITE_BUCKET }}/data/" \
+            --cache-control "public, max-age=86400"
+          aws s3 sync public/js/ "s3://${{ vars.SITE_BUCKET }}/js/" \
+            --cache-control "public, max-age=86400"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/*"
+
+  # ── Seed rankings on first deploy ──────────────────────────────────
+  seed-rankings:
+    needs: deploy-api
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/anthemworld-deploy
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Seed if rankings table is empty
+        run: |
+          COUNT=$(aws dynamodb scan \
+            --table-name anthem-rankings-prod \
+            --select COUNT \
+            --query 'Count' \
+            --output text 2>/dev/null || echo "0")
+
+          if [ "$COUNT" -lt 10 ]; then
+            echo "Rankings table has $COUNT items — seeding..."
+            STAGE=prod bash sam/game/scripts/seed-rankings.sh
+          else
+            echo "Rankings table has $COUNT items — skipping seed"
+          fi

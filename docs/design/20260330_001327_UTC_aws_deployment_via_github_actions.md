@@ -2,7 +2,7 @@
 
 **Author:** aallbright + Claude
 **Date:** 2026-03-30
-**Status:** Design (not yet implemented)
+**Status:** Implemented (2026-03-30)
 
 ---
 
@@ -82,7 +82,7 @@ After creating the distribution, add an S3 bucket policy granting CloudFront OAC
     "Resource": "arn:aws:s3:::anthemworld-site/*",
     "Condition": {
       "StringEquals": {
-        "AWS:SourceArn": "arn:aws:cloudfront::ACCOUNT_ID:distribution/DISTRIBUTION_ID"
+        "AWS:SourceArn": "arn:aws:cloudfront::702353326783:distribution/E22QM4NDFL7MNS"
       }
     }
   }]
@@ -101,7 +101,7 @@ cat > trust-policy.json << 'TRUST'
   "Statement": [{
     "Effect": "Allow",
     "Principal": {
-      "Federated": "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+      "Federated": "arn:aws:iam::702353326783:oidc-provider/token.actions.githubusercontent.com"
     },
     "Action": "sts:AssumeRoleWithWebIdentity",
     "Condition": {
@@ -109,7 +109,7 @@ cat > trust-policy.json << 'TRUST'
         "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
       },
       "StringLike": {
-        "token.actions.githubusercontent.com:sub": "repo:YOUR_ORG/anthemworld:ref:refs/heads/main"
+        "token.actions.githubusercontent.com:sub": "repo:aallbrig/anthemworld:ref:refs/heads/main"
       }
     }
   }]
@@ -151,7 +151,7 @@ aws iam put-role-policy \
       "Sid": "CloudFrontInvalidation",
       "Effect": "Allow",
       "Action": "cloudfront:CreateInvalidation",
-      "Resource": "arn:aws:cloudfront::ACCOUNT_ID:distribution/DISTRIBUTION_ID"
+      "Resource": "arn:aws:cloudfront::702353326783:distribution/E22QM4NDFL7MNS"
     },
     {
       "Sid": "SAMDeploy",
@@ -164,7 +164,7 @@ aws iam put-role-policy \
         "cloudformation:DescribeStackEvents",
         "cloudformation:GetTemplate"
       ],
-      "Resource": "arn:aws:cloudformation:us-east-1:ACCOUNT_ID:stack/anthemworld-game-*/*"
+      "Resource": "arn:aws:cloudformation:us-east-1:702353326783:stack/anthemworld-game-*/*"
     },
     {
       "Sid": "SAMArtifactBucket",
@@ -196,7 +196,7 @@ aws iam put-role-policy \
         "lambda:TagResource",
         "lambda:ListTags"
       ],
-      "Resource": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:anthemworld-game-*"
+      "Resource": "arn:aws:lambda:us-east-1:702353326783:function:anthemworld-game-*"
     },
     {
       "Sid": "APIGateway",
@@ -225,13 +225,13 @@ aws iam put-role-policy \
         "dynamodb:TagResource",
         "dynamodb:ListTagsOfResource"
       ],
-      "Resource": "arn:aws:dynamodb:us-east-1:ACCOUNT_ID:table/anthem-*-prod"
+      "Resource": "arn:aws:dynamodb:us-east-1:702353326783:table/anthem-*-prod"
     },
     {
       "Sid": "IAMPassRoleForLambda",
       "Effect": "Allow",
       "Action": "iam:PassRole",
-      "Resource": "arn:aws:iam::ACCOUNT_ID:role/anthemworld-game-*",
+      "Resource": "arn:aws:iam::702353326783:role/anthemworld-game-*",
       "Condition": {
         "StringEquals": { "iam:PassedToService": "lambda.amazonaws.com" }
       }
@@ -250,7 +250,7 @@ aws iam put-role-policy \
         "iam:GetRolePolicy",
         "iam:TagRole"
       ],
-      "Resource": "arn:aws:iam::ACCOUNT_ID:role/anthemworld-game-*"
+      "Resource": "arn:aws:iam::702353326783:role/anthemworld-game-*"
     },
     {
       "Sid": "CloudFormationTransform",
@@ -282,9 +282,9 @@ Go to **Settings > Secrets and variables > Actions** and add:
 
 | Type | Name | Value | Notes |
 |------|------|-------|-------|
-| Secret | `AWS_ACCOUNT_ID` | `123456789012` | Your 12-digit account ID |
+| Secret | `AWS_702353326783` | `123456789012` | Your 12-digit account ID |
 | Variable | `AWS_REGION` | `us-east-1` | Deploy region |
-| Variable | `CLOUDFRONT_DISTRIBUTION_ID` | `E1EXAMPLE` | From Part 1C |
+| Variable | `CLOUDFRONT_E22QM4NDFL7MNS` | `E1EXAMPLE` | From Part 1C |
 | Variable | `SITE_BUCKET` | `anthemworld-site` | From Part 1B |
 | Variable | `PRODUCTION_DOMAIN` | `https://anthemworld.com` | For Hugo baseURL and CORS |
 
@@ -351,7 +351,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/anthemworld-deploy
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_702353326783 }}:role/anthemworld-deploy
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: SAM build
@@ -400,7 +400,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/anthemworld-deploy
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_702353326783 }}:role/anthemworld-deploy
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Build site
@@ -427,7 +427,7 @@ jobs:
       - name: Invalidate CloudFront cache
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --distribution-id "${{ vars.CLOUDFRONT_E22QM4NDFL7MNS }}" \
             --paths "/*"
 
   # ── Seed rankings on first deploy ──────────────────────────────────
@@ -441,7 +441,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/anthemworld-deploy
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_702353326783 }}:role/anthemworld-deploy
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Seed if rankings table is empty
@@ -469,7 +469,7 @@ jobs:
 >   "Sid": "DynamoDBSeedWrite",
 >   "Effect": "Allow",
 >   "Action": ["dynamodb:BatchWriteItem", "dynamodb:Scan"],
->   "Resource": "arn:aws:dynamodb:us-east-1:ACCOUNT_ID:table/anthem-rankings-prod"
+>   "Resource": "arn:aws:dynamodb:us-east-1:702353326783:table/anthem-rankings-prod"
 > }
 > ```
 
@@ -479,32 +479,31 @@ jobs:
 
 Do these steps in order. Each step depends on the previous one.
 
-### One-time AWS setup (manual, ~30 minutes)
+### One-time AWS setup (completed 2026-03-30)
 
-- [ ] **Pick a domain name** and register it (Route 53 or external registrar)
-- [ ] **Create OIDC provider** (Part 1A) — one `aws iam` command
-- [ ] **Create S3 bucket** (Part 1B) — two `aws s3` commands
-- [ ] **Create IAM deploy role** (Part 1D) — three `aws iam` commands
-  - Replace every `ACCOUNT_ID` placeholder with your real account ID
-  - Replace `YOUR_ORG/anthemworld` with the actual `owner/repo`
-- [ ] **Create CloudFront distribution** (Part 1C) — easiest via the AWS console
-  - Note the distribution ID for the GitHub variable
-- [ ] **Request ACM certificate** (if using custom domain) — must be in us-east-1
-- [ ] **Add S3 bucket policy** granting CloudFront OAC access (Part 1C)
+- [x] **Domain:** `anthemworld.net` registered via Route 53 (hosted zone `Z08041081MP5MV3AWW9V3`)
+- [x] **OIDC provider:** Already existed in account
+- [x] **S3 bucket:** `anthemworld-site` created, public access blocked
+- [x] **IAM deploy role:** `anthemworld-deploy` with OIDC trust for `aallbrig/anthemworld:main`
+- [x] **ACM certificate:** `anthemworld.net` + `*.anthemworld.net` (DNS validated)
+- [x] **CloudFront:** `E22QM4NDFL7MNS` (`demt6o1ioy2cy.cloudfront.net`), OAC `E3TDH809OEA7XT`
+- [x] **S3 bucket policy:** Grants CloudFront OAC read access
+- [x] **Route 53 alias:** A + AAAA records pointing `anthemworld.net` to CloudFront
+- [x] **1Password:** All resource IDs saved as "Anthem World - AWS Deployment"
 
-### One-time GitHub setup (~5 minutes)
+### One-time GitHub setup (completed 2026-03-30)
 
-- [ ] **Add secrets and variables** (Part 2A) in repo settings
-- [ ] **Make `ci.yml` reusable** — add `on: workflow_call:` trigger alongside existing triggers
-- [ ] **Create `deploy.yml`** (Part 3) — copy the workflow above
-- [ ] **Enable branch protection** on `main` (Part 2B)
+- [x] **Secret:** `AWS_ACCOUNT_ID`
+- [x] **Variables:** `AWS_REGION=us-east-1`, `SITE_BUCKET=anthemworld-site`, `PRODUCTION_DOMAIN=https://anthemworld.net`, `CLOUDFRONT_DISTRIBUTION_ID=E22QM4NDFL7MNS`
+- [x] **`ci.yml`:** Added `workflow_call` trigger
+- [x] **`deploy.yml`:** Created with CI gate, SAM deploy, Hugo S3 sync, CloudFront invalidation, conditional seed
+- [ ] **Enable branch protection** on `main` (Part 2B) — do after first successful deploy
 
 ### First deploy
 
-- [ ] **Add the temporary `DynamoDBSeedWrite` IAM permission** to the deploy role
 - [ ] **Push to `main`** — the deploy workflow will run CI, deploy SAM, deploy Hugo, and seed rankings
-- [ ] **Verify the site** at the CloudFront URL or custom domain
-- [ ] **Remove the `DynamoDBSeedWrite` permission** from the deploy role
+  (DynamoDB seed permissions already included in deploy role)
+- [ ] **Verify the site** at https://anthemworld.net
 
 ### Post-deploy verification
 
