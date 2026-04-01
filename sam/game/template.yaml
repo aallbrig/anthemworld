@@ -14,7 +14,7 @@ Globals:
         SESSIONS_TABLE:  !Ref SessionsTable
         LISTEN_TABLE:    !Ref ListenHistoryTable
         MAX_VOTES_PER_SESSION: "100"
-        MAX_SESSIONS_PER_IP:   "3"
+        MAX_SESSIONS_PER_IP:   "50"
         MAX_MATCHUPS_PER_SESSION: "300"
         CORS_ORIGIN:     !Ref CorsOrigin
         LOCAL_DYNAMODB_ENDPOINT: ""

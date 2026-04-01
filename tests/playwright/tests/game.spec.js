@@ -17,7 +17,30 @@ const { test, expect } = require('@playwright/test');
 // Skip in CI unless testing against a deployed site (BASE_URL set).
 test.skip(!!process.env.CI && !process.env.BASE_URL, 'requires game API (not available in CI without BASE_URL)');
 
+const API = process.env.API_URL || 'http://localhost:3001';
 const PAGE_TIMEOUT = 60_000; // SAM Lambda cold starts can take 15-20s
+
+let sharedSessionId;
+
+// Create one session up-front and reuse it across tests to avoid per-IP
+// session limits (MAX_SESSIONS_PER_IP) in production.
+test.beforeAll(async () => {
+  const res = await fetch(`${API}/session`, { method: 'POST' });
+  expect(res.status).toBe(201);
+  sharedSessionId = (await res.json()).session_id;
+});
+
+// Inject the shared session into localStorage so game.js reuses it
+// instead of calling POST /session on every page load.
+async function injectSession(page) {
+  await page.addInitScript((sid) => {
+    localStorage.setItem('aw_session', JSON.stringify({
+      session_id: sid,
+      user_country: null,
+      created_at: new Date().toISOString(),
+    }));
+  }, sharedSessionId);
+}
 
 // Helper: wait for the matchup panel to be visible (session + matchup loaded)
 async function waitForMatchup(page) {
