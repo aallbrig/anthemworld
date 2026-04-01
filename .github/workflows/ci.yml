@@ -97,6 +97,25 @@ jobs:
           path: tests/playwright/playwright-report/
           retention-days: 7
 
+  # ── Lambda: unit tests ──────────────────────────────────────────────────────
+  lambda-tests:
+    name: Lambda unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: sam/game/functions
+        run: npm ci
+
+      - name: Run tests
+        working-directory: sam/game/functions
+        run: npm test
+
   # ── SAM: validate template ───────────────────────────────────────────────────
   sam-validate:
     name: SAM validate
