@@ -225,10 +225,10 @@ exports.handler = async (event) => {
                     ':max': MAX_VOTES_PER_SESSION,
                     ':lva': votedAt,
                 },
-            }).catch(err => {
+            })).catch(err => {
                 if (err.name === 'ConditionalCheckFailedException') return; // vote already recorded above
                 throw err;
-            })),
+            }),
             // Update listen history for winner
             db.send(new UpdateCommand({
                 TableName: LISTEN_TABLE,
