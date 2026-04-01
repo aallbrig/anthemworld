@@ -13,7 +13,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="{{ $description }}">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com unpkg.com code.jquery.com cdn.datatables.net; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com unpkg.com cdn.datatables.net; img-src 'self' data: https:; connect-src 'self' {{ with .Site.Params.gameApiBase }}{{ . }}{{ end }} https://*.tile.openstreetmap.org; font-src 'self' cdn.jsdelivr.net; media-src 'self' https://upload.wikimedia.org;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com unpkg.com code.jquery.com cdn.datatables.net; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com unpkg.com cdn.datatables.net; img-src 'self' data: https:; connect-src 'self'{{ with .Site.Params.gameApiBase }} {{ . }}{{ end }} https://*.tile.openstreetmap.org; font-src 'self' cdn.jsdelivr.net; media-src 'self' https://upload.wikimedia.org;">
     <title>{{ block "title" . }}{{ .Site.Title }}{{ end }}</title>
     <link rel="canonical" href="{{ .Permalink }}">
     {{ range .AllTranslations }}

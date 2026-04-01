@@ -33,21 +33,51 @@ Parameters:
 
 Resources:
 
+  # ── API Gateway Logging ────────────────────────────────────────────────────
+  ApiGatewayCloudWatchRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+
+  ApiGatewayAccount:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn: !GetAtt ApiGatewayCloudWatchRole.Arn
+
+  ApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/apigateway/anthemworld-game-${Stage}"
+      RetentionInDays: 30
+
   # ── API Gateway ────────────────────────────────────────────────────────────
   GameApi:
     Type: AWS::Serverless::Api
+    DependsOn: ApiGatewayAccount
     Properties:
       StageName: !Ref Stage
       Cors:
         AllowMethods: "'GET,POST,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Session-Id'"
         AllowOrigin: !Sub "'${CorsOrigin}'"
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiAccessLogGroup.Arn
       # S-02: Throttle all routes to prevent DDoS / cost runaway
       MethodSettings:
         - HttpMethod: '*'
           ResourcePath: '/*'
           ThrottlingBurstLimit: 50
           ThrottlingRateLimit: 100
+          MetricsEnabled: true
+          LoggingLevel: ERROR
 
   # ── Lambda Functions ────────────────────────────────────────────────────────
   SessionFunction:
@@ -192,6 +222,8 @@ Resources:
     Properties:
       TableName: !Sub "anthem-votes-${Stage}"
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: vote_id
           AttributeType: S
@@ -220,6 +252,8 @@ Resources:
     Properties:
       TableName: !Sub "anthem-sessions-${Stage}"
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: session_id
           AttributeType: S
@@ -248,6 +282,8 @@ Resources:
     Properties:
       TableName: !Sub "anthem-listen-history-${Stage}"
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
       AttributeDefinitions:
         - AttributeName: pk   # session_id#country_id
           AttributeType: S
@@ -257,6 +293,138 @@ Resources:
       TimeToLiveSpecification:
         AttributeName: ttl
         Enabled: true
+
+  # ── CloudWatch Alarms ────────────────────────────────────────────────────────
+  Api5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "anthemworld-${Stage}-api-5xx"
+      AlarmDescription: "API Gateway 5xx errors exceeded threshold"
+      Namespace: AWS/ApiGateway
+      MetricName: 5XXError
+      Dimensions:
+        - Name: ApiName
+          Value: !Ref GameApi
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  Api4xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "anthemworld-${Stage}-api-4xx"
+      AlarmDescription: "API Gateway 4xx errors exceeded threshold (possible abuse)"
+      Namespace: AWS/ApiGateway
+      MetricName: 4XXError
+      Dimensions:
+        - Name: ApiName
+          Value: !Ref GameApi
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 100
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  ApiLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "anthemworld-${Stage}-api-latency"
+      AlarmDescription: "API Gateway p99 latency exceeded 5 seconds"
+      Namespace: AWS/ApiGateway
+      MetricName: Latency
+      Dimensions:
+        - Name: ApiName
+          Value: !Ref GameApi
+      ExtendedStatistic: p99
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5000
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  LambdaErrorAlarmVote:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "anthemworld-${Stage}-lambda-vote-errors"
+      AlarmDescription: "Vote function errors (critical path)"
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref VoteFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  LambdaErrorAlarmSession:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "anthemworld-${Stage}-lambda-session-errors"
+      AlarmDescription: "Session function errors (critical path)"
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SessionFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  # ── WAF (API Gateway) ──────────────────────────────────────────────────────
+  ApiWafWebAcl:
+    Type: AWS::WAFv2::WebACL
+    Properties:
+      Name: !Sub "anthemworld-api-${Stage}"
+      Scope: REGIONAL
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+        MetricName: !Sub "anthemworld-api-${Stage}"
+      Rules:
+        - Name: AWSManagedRulesCommonRuleSet
+          Priority: 1
+          Statement:
+            ManagedRuleGroupStatement:
+              VendorName: AWS
+              Name: AWSManagedRulesCommonRuleSet
+              ExcludedRules:
+                - Name: SizeRestrictions_BODY
+          OverrideAction:
+            None: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub "anthemworld-api-${Stage}-common"
+        - Name: RateLimitPerIP
+          Priority: 2
+          Statement:
+            RateBasedStatement:
+              Limit: 1000
+              AggregateKeyType: IP
+          Action:
+            Block: {}
+          VisibilityConfig:
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+            MetricName: !Sub "anthemworld-api-${Stage}-ratelimit"
+
+  ApiWafAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Properties:
+      ResourceArn: !Sub "arn:aws:apigateway:${AWS::Region}::/restapis/${GameApi}/stages/${Stage}"
+      WebACLArn: !GetAtt ApiWafWebAcl.Arn
 
 Outputs:
   GameApiUrl:

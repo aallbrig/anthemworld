@@ -82,9 +82,59 @@ jobs:
     outputs:
       api_url: ${{ steps.api-url.outputs.api_url }}
 
+  # ── Deploy CloudFront WAF (us-east-1) ───────────────────────────────
+  deploy-waf:
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/anthemworld-deploy
+          aws-region: us-east-1   # WAF for CloudFront must be in us-east-1
+
+      - name: Deploy CloudFront WAF stack
+        run: |
+          aws cloudformation deploy \
+            --template-file sam/waf/template.yaml \
+            --stack-name anthemworld-waf-cloudfront \
+            --no-fail-on-empty-changeset \
+            --region us-east-1
+
+      - name: Associate WAF with CloudFront distribution
+        run: |
+          WAF_ARN=$(aws cloudformation describe-stacks \
+            --stack-name anthemworld-waf-cloudfront \
+            --region us-east-1 \
+            --query 'Stacks[0].Outputs[?OutputKey==`WebAclArn`].OutputValue' \
+            --output text)
+
+          DIST_CONFIG=$(aws cloudfront get-distribution-config \
+            --id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}")
+          ETAG=$(echo "$DIST_CONFIG" | python3 -c "import json,sys; print(json.load(sys.stdin)['ETag'])")
+
+          echo "$DIST_CONFIG" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          config = data['DistributionConfig']
+          config['WebACLId'] = '$WAF_ARN'
+          json.dump(config, sys.stdout)
+          " > /tmp/cf-config.json
+
+          aws cloudfront update-distribution \
+            --id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --if-match "$ETAG" \
+            --distribution-config file:///tmp/cf-config.json \
+            > /dev/null
+
+          echo "✓ WAF $WAF_ARN associated with CloudFront ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}"
+
   # ── Deploy static site (Hugo -> S3 -> CloudFront) ──────────────────
   deploy-site:
-    needs: [ci, deploy-api]
+    needs: [ci, deploy-api, deploy-waf]
     runs-on: ubuntu-latest
     environment: production
     defaults:
@@ -106,7 +156,7 @@ jobs:
 
       - name: Build site
         env:
-          HUGO_PARAMS_GAMEAPIBASE: ${{ needs.deploy-api.outputs.api_url }}
+          HUGO_PARAMS_GAMEAPIBASE: https://api.anthemworld.net
         run: |
           hugo --minify \
             --baseURL "${{ vars.PRODUCTION_DOMAIN }}/"
