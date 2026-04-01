@@ -33,10 +33,9 @@ exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
     const lang = detectLanguage(event.headers);
 
-    // S-03: Accept session_id from header first, fall back to query param
+    // S-03: Accept session_id from header only (query string leaks to access logs)
     const sessionId = (event.headers || {})['X-Session-Id']
-        || (event.headers || {})['x-session-id']
-        || event.queryStringParameters?.session_id;
+        || (event.headers || {})['x-session-id'];
 
     if (!sessionId) return badRequest('matchup_session_required', null, lang);
     if (!isValidUUID(sessionId)) return badRequest('invalid_session_id', null, lang);
