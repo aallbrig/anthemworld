@@ -143,7 +143,9 @@ exports.handler = async (event) => {
     if (wantStats) {
         const cached = statsCache.get(cacheKey);
         if (cached && Date.now() < cached.expiresAt) {
-            return ok({ ...cached.body, cache_hit: true });
+            const body = { ...cached.body, cache_hit: true };
+            body.countries = cached.body.countries.slice(0, limit);
+            return ok(body);
         }
     }
 
@@ -156,7 +158,7 @@ exports.handler = async (event) => {
             return diff !== 0 ? diff : (a.name || '').localeCompare(b.name || '');
         });
 
-        const ranked = items.slice(0, limit).map((item, i) => {
+        const ranked = items.map((item, i) => {
             const wins    = item.wins   || 0;
             const losses  = item.losses || 0;
             const total   = wins + losses;
@@ -189,6 +191,8 @@ exports.handler = async (event) => {
             statsCache.set(cacheKey, { body: result, expiresAt: Date.now() + STATS_CACHE_TTL_MS });
         }
 
+        // Apply limit after caching so the cache stores the full ranked list
+        result.countries = ranked.slice(0, limit);
         return ok(result);
     } catch (err) {
         console.error('leaderboard error:', err);
