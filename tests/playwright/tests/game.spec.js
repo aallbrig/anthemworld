@@ -54,6 +54,7 @@ test.describe('Game page — structure', () => {
     page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', err => errors.push(err.message));
 
+    await injectSession(page);
     await page.goto('/game/', { waitUntil: 'domcontentloaded' });
     await waitForMatchup(page);
 
@@ -68,6 +69,7 @@ test.describe('Game page — structure', () => {
   });
 
   test('renders two country cards', async ({ page }) => {
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
     await expect(page.locator('#card-a')).toBeVisible();
@@ -75,6 +77,7 @@ test.describe('Game page — structure', () => {
   });
 
   test('renders two map containers', async ({ page }) => {
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
     await expect(page.locator('#map-a')).toBeVisible();
@@ -85,6 +88,7 @@ test.describe('Game page — structure', () => {
   });
 
   test('live maps resolve matchup countries instead of falling back to world view', async ({ page }) => {
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
 
@@ -107,6 +111,7 @@ test.describe('Game page — structure', () => {
   });
 
   test('renders audio players for both countries', async ({ page }) => {
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
     await expect(page.locator('#audio-a')).toBeVisible();
@@ -114,6 +119,7 @@ test.describe('Game page — structure', () => {
   });
 
   test('renders leaderboard link', async ({ page }) => {
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
     // Use first() — leaderboard link appears in both nav and score bar
@@ -138,12 +144,14 @@ test.describe('Game page — session & matchup', () => {
     page.on('response', res => {
       if (res.url().includes('/matchup') && res.status() === 200) matchupFetched = true;
     });
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
     expect(matchupFetched).toBe(true);
   });
 
   test('shows country names in both cards', async ({ page }) => {
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
 
@@ -155,6 +163,7 @@ test.describe('Game page — session & matchup', () => {
   });
 
   test('shows country flags', async ({ page }) => {
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
 
@@ -167,6 +176,7 @@ test.describe('Game page — session & matchup', () => {
   });
 
   test('shows ELO scores', async ({ page }) => {
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
 
@@ -178,6 +188,7 @@ test.describe('Game page — session & matchup', () => {
 test.describe('Game page — vote gate', () => {
   test.setTimeout(90_000);
   test('vote buttons are disabled on matchup load', async ({ page }) => {
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
 
@@ -191,6 +202,7 @@ test.describe('Game page — vote gate', () => {
   });
 
   test('skip button is visible and advances to next matchup', async ({ page }) => {
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
 
@@ -207,6 +219,7 @@ test.describe('Game page — vote gate', () => {
   });
 
   test('vote buttons enable after simulated listen time via JS', async ({ page }) => {
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
 
@@ -236,6 +249,7 @@ test.describe('Game page — vote flow', () => {
   test.setTimeout(120_000);
 
   test('casting a vote shows result flash and loads next matchup', async ({ page }) => {
+    await injectSession(page);
     await page.goto('/game/');
     await waitForMatchup(page);
 
