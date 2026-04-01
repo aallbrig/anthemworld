@@ -37,6 +37,7 @@ const { updateElo, INITIAL_ELO } = require('../shared/elo');
 const { ok, badRequest, forbidden, tooManyRequests, serverError, options } = require('../shared/response');
 const { detectLanguage } = require('../shared/messages');
 const { isoWeekId } = require('../shared/week');
+const { isValidUUID, hashIp, clientIp } = require('../shared/validate');
 
 const SESSIONS_TABLE         = process.env.SESSIONS_TABLE;
 const RANKINGS_TABLE         = process.env.RANKINGS_TABLE;
@@ -46,6 +47,9 @@ const MAX_VOTES_PER_SESSION  = parseInt(process.env.MAX_VOTES_PER_SESSION || '10
 
 /** Default max listen duration cap when ranking has no duration_ms (10 minutes). */
 const DEFAULT_MAX_DURATION_MS = 10 * 60 * 1000;
+
+/** P1: Minimum interval between votes (ms) — prevents automated rapid voting. */
+const MIN_VOTE_INTERVAL_MS = 3000;
 
 exports.handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
@@ -62,7 +66,9 @@ exports.handler = async (event) => {
             full_anthem_a, full_anthem_b } = body;
 
     if (!session_id)  return badRequest('vote_session_required', null, lang);
+    if (!isValidUUID(session_id)) return badRequest('invalid_session_id', null, lang);
     if (!matchup_id)  return badRequest('vote_matchup_required', null, lang);
+    if (!isValidUUID(matchup_id)) return badRequest('invalid_matchup_id', null, lang);
     if (!winner_id)   return badRequest('vote_winner_required', null, lang);
     if (!loser_id)    return badRequest('vote_loser_required', null, lang);
     if (winner_id === loser_id) return badRequest('vote_same_country', null, lang);
@@ -81,6 +87,20 @@ exports.handler = async (event) => {
         const now = Math.floor(Date.now() / 1000);
         if (session.ttl && session.ttl < now) {
             return forbidden('session_expired', null, lang);
+        }
+
+        // P2: Verify request IP matches session creator
+        const reqIpHash = hashIp(clientIp(event));
+        if (session.ip_hash && session.ip_hash !== reqIpHash) {
+            return forbidden('session_ip_mismatch', null, lang);
+        }
+
+        // P1: Enforce minimum interval between votes (anti-bot)
+        if (session.last_vote_at) {
+            const elapsed = Date.now() - new Date(session.last_vote_at).getTime();
+            if (elapsed < MIN_VOTE_INTERVAL_MS) {
+                return tooManyRequests('vote_too_fast', Math.ceil((MIN_VOTE_INTERVAL_MS - elapsed) / 1000), lang);
+            }
         }
 
         // Validate matchup ID matches the active one
@@ -192,15 +212,22 @@ exports.handler = async (event) => {
                 ExpressionAttributeValues: { ':e': newLoserElo, ':z': 0, ':one': 1, ':t': votedAt },
             })),
             // S-08: Update both lifetime vote_count and daily vote_count_today; clear active matchup
+            // P4: ConditionExpression prevents race condition on the counter
             db.send(new UpdateCommand({
                 TableName: SESSIONS_TABLE,
                 Key: { session_id },
-                UpdateExpression: 'SET vote_count = :vc, vote_count_today = :new_count, vote_date = :today REMOVE current_matchup',
+                UpdateExpression: 'SET vote_count = :vc, vote_count_today = :new_count, vote_date = :today, last_vote_at = :lva REMOVE current_matchup',
+                ConditionExpression: 'attribute_not_exists(vote_date) OR vote_date <> :today OR vote_count_today < :max',
                 ExpressionAttributeValues: {
                     ':vc': newVoteCount,
                     ':new_count': voteToday + 1,
                     ':today': today,
+                    ':max': MAX_VOTES_PER_SESSION,
+                    ':lva': votedAt,
                 },
+            }).catch(err => {
+                if (err.name === 'ConditionalCheckFailedException') return; // vote already recorded above
+                throw err;
             })),
             // Update listen history for winner
             db.send(new UpdateCommand({

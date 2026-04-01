@@ -19,6 +19,7 @@ const { GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const db = require('../shared/db');
 const { ok, badRequest, forbidden, serverError, options } = require('../shared/response');
 const { detectLanguage } = require('../shared/messages');
+const { isValidUUID, hashIp, clientIp } = require('../shared/validate');
 
 const SESSIONS_TABLE = process.env.SESSIONS_TABLE;
 const RANKINGS_TABLE = process.env.RANKINGS_TABLE;
@@ -44,6 +45,7 @@ exports.handler = async (event) => {
 
     const { session_id, events } = body;
     if (!session_id) return badRequest('listen_session_required', null, lang);
+    if (!isValidUUID(session_id)) return badRequest('invalid_session_id', null, lang);
     if (!Array.isArray(events) || events.length === 0) {
         return badRequest('listen_events_required', null, lang);
     }
@@ -71,6 +73,12 @@ exports.handler = async (event) => {
         const nowSec = Math.floor(Date.now() / 1000);
         if (sessionRes.Item.ttl && sessionRes.Item.ttl < nowSec) {
             return forbidden('session_expired', null, lang);
+        }
+
+        // P2: Verify request IP matches session creator
+        const reqIpHash = hashIp(clientIp(event));
+        if (sessionRes.Item.ip_hash && sessionRes.Item.ip_hash !== reqIpHash) {
+            return forbidden('session_ip_mismatch', null, lang);
         }
 
         // S-01: Fetch anthem duration_ms for each unique country to cap listen times

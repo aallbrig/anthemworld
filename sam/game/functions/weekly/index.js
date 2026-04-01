@@ -14,15 +14,18 @@
  */
 const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const db = require('../shared/db');
-const { ok, serverError, options } = require('../shared/response');
+const { ok, badRequest, serverError, options } = require('../shared/response');
 const { detectLanguage } = require('../shared/messages');
 const { isoWeekId } = require('../shared/week');
+const { isValidWeekId, evictOldest } = require('../shared/validate');
 
 const VOTES_TABLE    = process.env.VOTES_TABLE;
 const RANKINGS_TABLE = process.env.RANKINGS_TABLE;
 
 // Module-level cache: keyed by week_id, TTL 5 minutes
+// P5: Capped to prevent memory exhaustion via arbitrary week_id values
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_CACHE_ENTRIES = 60;
 const cache = new Map();
 
 exports.handler = async (event) => {
@@ -31,6 +34,11 @@ exports.handler = async (event) => {
 
     const qs     = event.queryStringParameters || {};
     const weekId = qs.week_id || isoWeekId();
+
+    // P0: Validate week_id format
+    if (qs.week_id && !isValidWeekId(qs.week_id)) {
+        return badRequest('invalid_week_id', null, lang);
+    }
 
     // Return cached response if available
     const cached = cache.get(weekId);
@@ -109,6 +117,8 @@ exports.handler = async (event) => {
             }));
 
         const result = { week_id: weekId, winners, stats, cache_hit: false };
+        // P5: Evict oldest entries when cache is full
+        evictOldest(cache, MAX_CACHE_ENTRIES);
         cache.set(weekId, { body: result, expiresAt: Date.now() + CACHE_TTL_MS });
         return ok(result);
     } catch (err) {

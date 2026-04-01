@@ -13,15 +13,17 @@
  */
 const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const db = require('../shared/db');
-const { ok, serverError, options } = require('../shared/response');
+const { ok, badRequest, serverError, options } = require('../shared/response');
 const { detectLanguage } = require('../shared/messages');
+const { isValidWeekId, evictOldest } = require('../shared/validate');
 
 const RANKINGS_TABLE = process.env.RANKINGS_TABLE;
 const VOTES_TABLE    = process.env.VOTES_TABLE;
 
 // S-07: Module-level cache for stats computation (avoids full table scan on every request)
-// Cache is keyed on the query (no week filter only). TTL: 5 minutes.
+// P0/P5: Cache ALL queries (including week-filtered), cap size to prevent memory exhaustion.
 const STATS_CACHE_TTL_MS = 5 * 60 * 1000;
+const MAX_CACHE_ENTRIES = 60;
 const statsCache = new Map(); // key → { body, generatedAt, expiresAt }
 
 // Simple ISO-3166 alpha-3 → UN region mapping (covers 193 UN members)
@@ -131,9 +133,14 @@ exports.handler = async (event) => {
     const wantStats = qs.stats === 'true';
     const weekId   = qs.week_id || null;
 
-    // S-07: Return cached stats response if available and not week-filtered
+    // P0: Validate week_id format to prevent cache-key flooding and unbounded scans
+    if (weekId && !isValidWeekId(weekId)) {
+        return badRequest('invalid_week_id', null, lang);
+    }
+
+    // S-07/P0: Return cached stats response if available (covers all queries now)
     const cacheKey = `stats:${weekId || 'all'}`;
-    if (wantStats && !weekId) {
+    if (wantStats) {
         const cached = statsCache.get(cacheKey);
         if (cached && Date.now() < cached.expiresAt) {
             return ok({ ...cached.body, cache_hit: true });
@@ -177,10 +184,9 @@ exports.handler = async (event) => {
 
         if (wantStats) {
             result.stats = await computeVoteStats(weekId);
-            // S-07: Cache the full response for 5 minutes (no week filter only)
-            if (!weekId) {
-                statsCache.set(cacheKey, { body: result, expiresAt: Date.now() + STATS_CACHE_TTL_MS });
-            }
+            // S-07/P0/P5: Cache all stat responses; evict oldest when full
+            evictOldest(statsCache, MAX_CACHE_ENTRIES);
+            statsCache.set(cacheKey, { body: result, expiresAt: Date.now() + STATS_CACHE_TTL_MS });
         }
 
         return ok(result);

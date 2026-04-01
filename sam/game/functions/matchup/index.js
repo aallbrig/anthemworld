@@ -22,6 +22,7 @@ const { v4: uuidv4 } = require('uuid');
 const db = require('../shared/db');
 const { ok, badRequest, forbidden, tooManyRequests, serverError, options } = require('../shared/response');
 const { detectLanguage } = require('../shared/messages');
+const { isValidUUID, hashIp, clientIp } = require('../shared/validate');
 
 const SESSIONS_TABLE          = process.env.SESSIONS_TABLE;
 const RANKINGS_TABLE          = process.env.RANKINGS_TABLE;
@@ -38,6 +39,7 @@ exports.handler = async (event) => {
         || event.queryStringParameters?.session_id;
 
     if (!sessionId) return badRequest('matchup_session_required', null, lang);
+    if (!isValidUUID(sessionId)) return badRequest('invalid_session_id', null, lang);
 
     try {
         // Validate session
@@ -50,6 +52,12 @@ exports.handler = async (event) => {
         const now = Math.floor(Date.now() / 1000);
         if (session.ttl && session.ttl < now) {
             return forbidden('session_expired', null, lang);
+        }
+
+        // P2: Verify request IP matches session creator
+        const reqIpHash = hashIp(clientIp(event));
+        if (session.ip_hash && session.ip_hash !== reqIpHash) {
+            return forbidden('session_ip_mismatch', null, lang);
         }
 
         // S-04: Enforce daily matchup cap
@@ -102,16 +110,26 @@ exports.handler = async (event) => {
         const matchupId = uuidv4();
 
         // S-04: Increment matchup_count_today + store current matchup
-        await db.send(new UpdateCommand({
-            TableName: SESSIONS_TABLE,
-            Key: { session_id: sessionId },
-            UpdateExpression: 'SET current_matchup = :m, matchup_count_today = :mc, matchup_date = :today',
-            ExpressionAttributeValues: {
-                ':m': { matchup_id: matchupId, country_a: countryA.country_id, country_b: countryB.country_id },
-                ':mc': matchupToday + 1,
-                ':today': today,
-            },
-        }));
+        // P4: ConditionExpression prevents race condition on the counter
+        try {
+            await db.send(new UpdateCommand({
+                TableName: SESSIONS_TABLE,
+                Key: { session_id: sessionId },
+                UpdateExpression: 'SET current_matchup = :m, matchup_count_today = :mc, matchup_date = :today',
+                ConditionExpression: 'attribute_not_exists(matchup_date) OR matchup_date <> :today OR matchup_count_today < :max',
+                ExpressionAttributeValues: {
+                    ':m': { matchup_id: matchupId, country_a: countryA.country_id, country_b: countryB.country_id },
+                    ':mc': matchupToday + 1,
+                    ':today': today,
+                    ':max': MAX_MATCHUPS_PER_SESSION,
+                },
+            }));
+        } catch (condErr) {
+            if (condErr.name === 'ConditionalCheckFailedException') {
+                return tooManyRequests('matchup_limit_reached', 86400, lang, { max: MAX_MATCHUPS_PER_SESSION });
+            }
+            throw condErr;
+        }
 
         const fmt = (country, listenRes) => ({
             country_id:   country.country_id,

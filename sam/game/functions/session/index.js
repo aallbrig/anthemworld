@@ -8,13 +8,13 @@
  */
 const { PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { v4: uuidv4 } = require('uuid');
-const crypto = require('crypto');
 const db = require('../shared/db');
 const { created, tooManyRequests, options, serverError } = require('../shared/response');
 const { detectLanguage } = require('../shared/messages');
+const { hashIp, clientIp } = require('../shared/validate');
 
 const SESSIONS_TABLE        = process.env.SESSIONS_TABLE;
-const MAX_SESSIONS_PER_IP   = parseInt(process.env.MAX_SESSIONS_PER_IP || '5', 10);
+const MAX_SESSIONS_PER_IP   = parseInt(process.env.MAX_SESSIONS_PER_IP || '3', 10);
 // Session TTL: 24 hours
 const SESSION_TTL_SECONDS   = 24 * 60 * 60;
 
@@ -23,8 +23,7 @@ exports.handler = async (event) => {
     const lang = detectLanguage(event.headers);
 
     try {
-        const ip = event.requestContext?.identity?.sourceIp || 'unknown';
-        const ipHash = crypto.createHash('sha256').update(ip).digest('hex');
+        const ipHash = hashIp(clientIp(event));
         const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
         // Check sessions created by this IP today

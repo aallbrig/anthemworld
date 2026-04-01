@@ -25,6 +25,11 @@ const CATALOG = {
         listen_events_required: 'events array is required and must not be empty',
         listen_too_many_events: 'Maximum {max} events per request',
         listen_invalid_country_id: 'country_id must be a 2–3 letter ISO country code',
+        invalid_session_id: 'Invalid session ID format',
+        invalid_matchup_id: 'Invalid matchup ID format',
+        invalid_week_id: 'Invalid week_id format. Use YYYY-Www (e.g. 2026-W12).',
+        session_ip_mismatch: 'Session does not belong to this client. Create a new session.',
+        vote_too_fast: 'Please wait a moment between votes.',
     },
     es: {
         internal_error: 'Ocurrió un error inesperado',
@@ -49,6 +54,11 @@ const CATALOG = {
         listen_events_required: 'El arreglo de eventos es obligatorio y no puede estar vacío',
         listen_too_many_events: 'Máximo {max} eventos por solicitud',
         listen_invalid_country_id: 'country_id debe ser un código ISO de país de 2 o 3 letras',
+        invalid_session_id: 'Formato de ID de sesión no válido',
+        invalid_matchup_id: 'Formato de ID de enfrentamiento no válido',
+        invalid_week_id: 'Formato de week_id no válido. Usa AAAA-Wss (ej. 2026-W12).',
+        session_ip_mismatch: 'La sesión no pertenece a este cliente. Crea una nueva sesión.',
+        vote_too_fast: 'Por favor espera un momento entre votos.',
     },
 };
 
