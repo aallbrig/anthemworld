@@ -105,6 +105,7 @@ jobs:
             --region us-east-1
 
       - name: Associate WAF with CloudFront distribution
+        continue-on-error: true
         run: |
           WAF_ARN=$(aws cloudformation describe-stacks \
             --stack-name anthemworld-waf-cloudfront \
@@ -112,8 +113,16 @@ jobs:
             --query 'Stacks[0].Outputs[?OutputKey==`WebAclArn`].OutputValue' \
             --output text)
 
+          # Check if already associated (skip update if so)
           DIST_CONFIG=$(aws cloudfront get-distribution-config \
             --id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}")
+          CURRENT_ACL=$(echo "$DIST_CONFIG" | python3 -c "import json,sys; print(json.load(sys.stdin)['DistributionConfig'].get('WebACLId',''))")
+
+          if [ "$CURRENT_ACL" = "$WAF_ARN" ]; then
+            echo "✓ WAF already associated — skipping"
+            exit 0
+          fi
+
           ETAG=$(echo "$DIST_CONFIG" | python3 -c "import json,sys; print(json.load(sys.stdin)['ETag'])")
 
           echo "$DIST_CONFIG" | python3 -c "
