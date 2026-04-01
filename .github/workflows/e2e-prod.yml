@@ -1,0 +1,64 @@
+name: E2E Production
+
+on:
+  workflow_run:
+    workflows: [Deploy]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Site URL to test against'
+        default: 'https://anthemworld.net'
+      api_url:
+        description: 'API URL for direct API tests (extracted from site if blank)'
+        default: ''
+
+jobs:
+  playwright:
+    # Run on manual trigger or after a successful deploy
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright deps
+        working-directory: tests/playwright
+        run: npm ci
+
+      - name: Install Firefox browser
+        working-directory: tests/playwright
+        run: npx playwright install --with-deps firefox
+
+      - name: Resolve API URL from deployed site
+        id: api
+        run: |
+          SITE="${{ inputs.base_url || 'https://anthemworld.net' }}"
+          if [ -n "${{ inputs.api_url }}" ]; then
+            echo "url=${{ inputs.api_url }}" >> "$GITHUB_OUTPUT"
+          else
+            URL=$(curl -sL "$SITE" | grep -oP 'GAME_API_URL="[^"]+' | head -1 | cut -d'"' -f2)
+            echo "url=${URL}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Playwright tests
+        working-directory: tests/playwright
+        run: npx playwright test
+        env:
+          CI: true
+          BASE_URL: ${{ inputs.base_url || 'https://anthemworld.net' }}
+          API_URL: ${{ steps.api.outputs.url }}
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-prod
+          path: tests/playwright/playwright-report/
+          retention-days: 14

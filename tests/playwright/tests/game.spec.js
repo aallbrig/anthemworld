@@ -14,12 +14,9 @@
 
 const { test, expect } = require('@playwright/test');
 
-// These tests require the SAM game API running at localhost:3001.
-// In CI there is no LocalStack/SAM stack, so skip the entire suite.
-test.skip(!!process.env.CI, 'requires SAM game API at localhost:3001 (not available in CI)');
+// Skip in CI unless testing against a deployed site (BASE_URL set).
+test.skip(!!process.env.CI && !process.env.BASE_URL, 'requires game API (not available in CI without BASE_URL)');
 
-const GAME_URL   = 'http://localhost:1313/game/';
-const SAM_URL    = 'http://localhost:3001';
 const PAGE_TIMEOUT = 60_000; // SAM Lambda cold starts can take 15-20s
 
 // Helper: wait for the matchup panel to be visible (session + matchup loaded)
@@ -34,7 +31,7 @@ test.describe('Game page — structure', () => {
     page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', err => errors.push(err.message));
 
-    await page.goto(GAME_URL, { waitUntil: 'domcontentloaded' });
+    await page.goto('/game/', { waitUntil: 'domcontentloaded' });
     await waitForMatchup(page);
 
     // Filter out known non-critical audio errors (no src yet / CORS for audio files)
@@ -48,14 +45,14 @@ test.describe('Game page — structure', () => {
   });
 
   test('renders two country cards', async ({ page }) => {
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
     await expect(page.locator('#card-a')).toBeVisible();
     await expect(page.locator('#card-b')).toBeVisible();
   });
 
   test('renders two map containers', async ({ page }) => {
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
     await expect(page.locator('#map-a')).toBeVisible();
     await expect(page.locator('#map-b')).toBeVisible();
@@ -65,7 +62,7 @@ test.describe('Game page — structure', () => {
   });
 
   test('live maps resolve matchup countries instead of falling back to world view', async ({ page }) => {
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
 
     // Check multiple random matchups so we catch regressions where certain
@@ -87,14 +84,14 @@ test.describe('Game page — structure', () => {
   });
 
   test('renders audio players for both countries', async ({ page }) => {
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
     await expect(page.locator('#audio-a')).toBeVisible();
     await expect(page.locator('#audio-b')).toBeVisible();
   });
 
   test('renders leaderboard link', async ({ page }) => {
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
     // Use first() — leaderboard link appears in both nav and score bar
     await expect(page.locator('a[href*="leaderboard"]').first()).toBeVisible();
@@ -108,7 +105,7 @@ test.describe('Game page — session & matchup', () => {
     page.on('response', res => {
       if (res.url().includes('/session') && res.status() === 201) sessionCreated = true;
     });
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
     expect(sessionCreated).toBe(true);
   });
@@ -118,13 +115,13 @@ test.describe('Game page — session & matchup', () => {
     page.on('response', res => {
       if (res.url().includes('/matchup') && res.status() === 200) matchupFetched = true;
     });
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
     expect(matchupFetched).toBe(true);
   });
 
   test('shows country names in both cards', async ({ page }) => {
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
 
     const nameA = await page.locator('#name-a').textContent();
@@ -135,7 +132,7 @@ test.describe('Game page — session & matchup', () => {
   });
 
   test('shows country flags', async ({ page }) => {
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
 
     // Flag images may be absent for countries with no flag_url in the dataset;
@@ -147,7 +144,7 @@ test.describe('Game page — session & matchup', () => {
   });
 
   test('shows ELO scores', async ({ page }) => {
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
 
     const eloA = await page.locator('#elo-a').textContent();
@@ -158,7 +155,7 @@ test.describe('Game page — session & matchup', () => {
 test.describe('Game page — vote gate', () => {
   test.setTimeout(90_000);
   test('vote buttons are disabled on matchup load', async ({ page }) => {
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
 
     // Unless the server says these anthems were previously heard (listen_ms >= 3000),
@@ -171,7 +168,7 @@ test.describe('Game page — vote gate', () => {
   });
 
   test('skip button is visible and advances to next matchup', async ({ page }) => {
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
 
     const nameABefore = await page.locator('#name-a').textContent();
@@ -187,7 +184,7 @@ test.describe('Game page — vote gate', () => {
   });
 
   test('vote buttons enable after simulated listen time via JS', async ({ page }) => {
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
 
     // Fast-forward the listen timers by directly firing the play event and
@@ -216,7 +213,7 @@ test.describe('Game page — vote flow', () => {
   test.setTimeout(120_000);
 
   test('casting a vote shows result flash and loads next matchup', async ({ page }) => {
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
     await waitForMatchup(page);
 
     const nameABefore = await page.locator('#name-a').textContent();
@@ -259,7 +256,7 @@ test.describe('Game page — error states', () => {
   test('shows error panel when API is unreachable', async ({ page }) => {
     // Override API URL to a dead port
     await page.addInitScript(() => { window.GAME_API_URL = 'http://localhost:19999'; });
-    await page.goto(GAME_URL);
+    await page.goto('/game/');
 
     await expect(page.locator('#game-error')).toBeVisible({ timeout: 30_000 });
     const title = await page.locator('#game-error-title').textContent();
@@ -270,6 +267,9 @@ test.describe('Game page — error states', () => {
 });
 
 test.describe('Game page — unmappable matchup recovery', () => {
+  // This test mocks API responses via route interception — skip against deployed sites.
+  test.skip(!!process.env.BASE_URL, 'uses mocked API routes, not applicable to production');
+
   test('skips an unmappable matchup and renders the next valid one', async ({ page }) => {
     test.setTimeout(30_000);
     let matchupCount = 0;
@@ -304,7 +304,7 @@ test.describe('Game page — unmappable matchup recovery', () => {
       });
     });
 
-    await page.goto(GAME_URL, { waitUntil: 'domcontentloaded' });
+    await page.goto('/game/', { waitUntil: 'domcontentloaded' });
     await waitForMatchup(page);
 
     await expect(page.locator('#name-a')).toHaveText('France');

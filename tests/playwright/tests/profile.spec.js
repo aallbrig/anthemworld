@@ -1,10 +1,8 @@
 const { test, expect } = require('@playwright/test');
 
-const PROFILE_URL = 'http://localhost:1313/profile/';
-
 test.describe('Profile page', () => {
   test('loads and shows summary cards', async ({ page }) => {
-    await page.goto(PROFILE_URL, { waitUntil: 'domcontentloaded' });
+    await page.goto('/profile/', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#profile-content')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('#profile-total-count')).toBeVisible();
     await expect(page.locator('#profile-table')).toBeVisible();
@@ -37,7 +35,7 @@ test.describe('Profile page', () => {
       localStorage.setItem('aw_heard_anthem:FRA', '1');
     });
 
-    await page.goto(PROFILE_URL, { waitUntil: 'domcontentloaded' });
+    await page.goto('/profile/', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#profile-content')).toBeVisible({ timeout: 15_000 });
 
     await expect(page.locator('#profile-table tbody tr').first()).toContainText('France');

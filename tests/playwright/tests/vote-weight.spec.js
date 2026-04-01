@@ -13,9 +13,10 @@
 
 const { test, expect } = require('@playwright/test');
 
-test.skip(!!process.env.CI, 'requires SAM game API at localhost:3001');
+// Skip in CI unless API_URL is provided (production or integration environment).
+test.skip(!!process.env.CI && !process.env.API_URL, 'requires game API (set API_URL for production)');
 
-const API = 'http://localhost:3001';
+const API = process.env.API_URL || 'http://localhost:3001';
 
 async function createSession() {
   const res = await fetch(`${API}/session`, { method: 'POST' });
