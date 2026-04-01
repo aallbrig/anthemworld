@@ -166,6 +166,7 @@ jobs:
       - name: Build site
         env:
           HUGO_PARAMS_GAMEAPIBASE: https://api.anthemworld.net
+          HUGO_PARAMS_GOOGLEANALYTICSID: ${{ secrets.GOOGLE_ANALYTICS_ID }}
         run: |
           hugo --minify \
             --baseURL "${{ vars.PRODUCTION_DOMAIN }}/"
