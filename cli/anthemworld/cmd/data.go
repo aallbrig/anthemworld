@@ -312,16 +312,31 @@ var dataDownloadCmd = &cobra.Command{
 			fmt.Printf("[%d/%d] %s\n", i+1, len(allSources), source.Name())
 			logger.Infof("Starting download from %s", source.Name())
 
+			// Update job metadata with current source checkpoint
+			jobs.UpdateJobMetadata(database, jobID, map[string]interface{}{
+				"current_source": source.ID(),
+				"source_index":   i + 1,
+				"source_total":   len(allSources),
+			})
+
 			if err := source.Download(ctx, database, logger); err != nil {
 				logger.Errorf("Failed to download from %s: %v", source.Name(), err.Error())
 				fmt.Printf("    ✗ Failed: %v\n\n", err)
 				failCount++
+
+				jobs.UpdateJobMetadata(database, jobID, map[string]interface{}{
+					"last_failed_source": source.ID(),
+				})
 				continue
 			}
 
 			logger.Infof("✓ Successfully downloaded from %s", source.Name())
 			fmt.Printf("    ✓ Success\n\n")
 			successCount++
+
+			jobs.UpdateJobMetadata(database, jobID, map[string]interface{}{
+				"last_completed_source": source.ID(),
+			})
 		}
 
 		// Complete or fail job based on results

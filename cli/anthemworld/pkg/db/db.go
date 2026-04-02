@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+
+	"github.com/anthemworld/cli/pkg/jobs"
 )
 
 const (
@@ -55,6 +58,11 @@ func GetDB() (*sql.DB, error) {
 			db.Close()
 			return nil, fmt.Errorf("failed to apply migrations: %w", err)
 		}
+	}
+	
+	// Clean up stale RUNNING jobs from crashed/killed previous runs
+	if cleaned, err := jobs.CleanupStaleJobs(db, 1*time.Hour); err == nil && cleaned > 0 {
+		fmt.Printf("Cleaned up %d stale job(s) from previous run\n", cleaned)
 	}
 	
 	return db, nil

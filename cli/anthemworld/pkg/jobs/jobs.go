@@ -22,6 +22,51 @@ type Job struct {
 	Metadata         map[string]interface{}
 }
 
+// CleanupStaleJobs marks RUNNING jobs older than maxAge as FAILED.
+// This prevents zombie jobs from blocking future runs after a crash or kill.
+func CleanupStaleJobs(db *sql.DB, maxAge time.Duration) (int, error) {
+	cutoff := time.Now().Add(-maxAge).Format(time.RFC3339)
+	result, err := db.Exec(`
+		UPDATE jobs
+		SET status = 'FAILED',
+		    completed_at = CURRENT_TIMESTAMP,
+		    error_message = 'Marked as failed: stale RUNNING job exceeded max age'
+		WHERE status = 'RUNNING'
+		  AND started_at < ?
+	`, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := result.RowsAffected()
+	return int(n), nil
+}
+
+// UpdateJobMetadata merges the given key-value pairs into the job's metadata JSON.
+func UpdateJobMetadata(db *sql.DB, jobID string, updates map[string]interface{}) error {
+	var metadataJSON string
+	err := db.QueryRow(`SELECT COALESCE(metadata, '{}') FROM jobs WHERE id = ?`, jobID).Scan(&metadataJSON)
+	if err != nil {
+		return err
+	}
+
+	var existing map[string]interface{}
+	if err := json.Unmarshal([]byte(metadataJSON), &existing); err != nil {
+		existing = make(map[string]interface{})
+	}
+
+	for k, v := range updates {
+		existing[k] = v
+	}
+
+	merged, err := json.Marshal(existing)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`UPDATE jobs SET metadata = ? WHERE id = ?`, string(merged), jobID)
+	return err
+}
+
 // CreateJob creates a new job in the database
 func CreateJob(db *sql.DB, jobType string, metadata map[string]interface{}) (string, error) {
 	jobID := uuid.New().String()
