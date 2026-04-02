@@ -2,8 +2,10 @@ package sources
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -187,6 +189,14 @@ type ImageInfoResponse struct {
 	} `json:"query"`
 }
 
+// deterministicRecordingID generates a stable, unique recording ID from the
+// country ID and Wikimedia filename. The same inputs always produce the same
+// output, making re-runs idempotent.
+func deterministicRecordingID(countryID, fileName string) string {
+	h := sha256.Sum256([]byte(countryID + "|" + fileName))
+	return "wr-" + hex.EncodeToString(h[:16]) // 32 hex chars + prefix
+}
+
 // Download fetches audio files from Wikimedia Commons
 func (w *WikimediaSource) Download(ctx context.Context, db *sql.DB, logger *jobs.JobLogger) error {
 	logger.Info("Starting Wikimedia Commons download")
@@ -296,7 +306,15 @@ func (w *WikimediaSource) Download(ctx context.Context, db *sql.DB, logger *jobs
 
 		logger.Infof("Found %d audio files for %s (%s)", len(audioFiles), ca.countryName, ca.anthemName)
 
+		// Wrap per-country audio inserts in a transaction for atomicity
+		tx, txErr := db.BeginTx(ctx, nil)
+		if txErr != nil {
+			errors++
+			continue
+		}
+
 		// Get file info for each audio file (limit to first 3 to avoid too many recordings)
+		countryInserted := 0
 		for j, fileName := range audioFiles {
 			if j >= 3 {
 				break
@@ -316,32 +334,39 @@ func (w *WikimediaSource) Download(ctx context.Context, db *sql.DB, logger *jobs
 				recordingType = "instrumental"
 			}
 
-			// Generate a unique ID for the recording
-			recordingID := fmt.Sprintf("%s-%d", ca.countryID, time.Now().UnixNano())
+			recordingID := deterministicRecordingID(ca.countryID, fileName)
 
-			// Insert audio recording
-			_, err = db.Exec(`
+			// Insert audio recording (ON CONFLICT skip for idempotency)
+			_, err = tx.Exec(`
 				INSERT INTO audio_recordings (
 					id, country_id, title, url, format, duration_seconds,
 					type, source, license, file_size_bytes, quality, created_at
 				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+				ON CONFLICT(id) DO UPDATE SET
+					url = excluded.url,
+					format = excluded.format,
+					duration_seconds = excluded.duration_seconds,
+					file_size_bytes = excluded.file_size_bytes,
+					updated_at = CURRENT_TIMESTAMP
 			`, recordingID, ca.countryID, fileName, fileInfo.url, fileInfo.mime, int(fileInfo.duration),
 				recordingType, "wikimedia-commons", "CC-BY-SA", fileInfo.size, "standard")
 
 			if err != nil {
-				// Check if it's a duplicate
-				if strings.Contains(err.Error(), "UNIQUE") {
-					logger.Infof("Duplicate recording for %s, skipping", fileName)
-					continue
-				}
 				logger.Infof("Error inserting recording for '%s': %v", fileName, err)
 				errors++
 				continue
 			}
 
 			logger.Infof("✓ Inserted audio recording for %s: %s", ca.countryName, fileName)
-			inserted++
+			countryInserted++
 		}
+
+		if err := tx.Commit(); err != nil {
+			logger.Infof("Error committing recordings for %s: %v", ca.countryName, err)
+			errors++
+			continue
+		}
+		inserted += countryInserted
 	}
 
 	// Update metadata
