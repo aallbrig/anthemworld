@@ -126,3 +126,76 @@ func TestFactbookSkipAlreadyEnriched(t *testing.T) {
 		t.Error("non-existent country should return true (will be skipped later by matchCountry)")
 	}
 }
+
+func TestCIAToISOMapping(t *testing.T) {
+	// Verify key mappings exist
+	knownMappings := map[string]string{
+		"gm": "DE", // Germany
+		"rs": "RU", // Russia
+		"is": "IL", // Israel
+		"bh": "BZ", // Belize
+		"ci": "CL", // Chile
+		"kn": "KP", // North Korea
+		"bm": "MM", // Myanmar
+	}
+
+	for cia, wantISO := range knownMappings {
+		gotISO, ok := ciaToISO[cia]
+		if !ok {
+			t.Errorf("ciaToISO missing entry for CIA code %q (expected ISO %q)", cia, wantISO)
+			continue
+		}
+		if gotISO != wantISO {
+			t.Errorf("ciaToISO[%q] = %q, want %q", cia, gotISO, wantISO)
+		}
+	}
+
+	// Ensure no nil map
+	if ciaToISO == nil {
+		t.Fatal("ciaToISO map is nil")
+	}
+}
+
+func TestMatchCountryWithCIAAlias(t *testing.T) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec(`
+		CREATE TABLE countries (
+			id TEXT PRIMARY KEY,
+			name TEXT,
+			common_name TEXT,
+			iso_alpha2 TEXT,
+			factbook_code TEXT,
+			national_symbols TEXT,
+			national_colors TEXT,
+			updated_at TEXT
+		)
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Germany: ISO alpha2 = DE, CIA code = gm
+	_, err = db.Exec(`INSERT INTO countries (id, name, iso_alpha2) VALUES ('deu', 'Federal Republic of Germany', 'DE')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f := NewFactbookSource()
+	profile := &factbookProfile{}
+	profile.Government.CountryName.ConvShortForm.Text = "Germany"
+
+	// The CIA code "gm" doesn't match ISO "DE" directly,
+	// but with the alias map it should resolve
+	countryID, err := f.matchCountry(db, "gm", profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if countryID != "deu" {
+		t.Errorf("matchCountry('gm') = %q, want 'deu'", countryID)
+	}
+}

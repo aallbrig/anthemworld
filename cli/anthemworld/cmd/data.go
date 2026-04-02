@@ -430,6 +430,35 @@ Use --export to automatically export data to JSON after downloading.`,
 	},
 }
 
+var dataSeedCmd = &cobra.Command{
+	Use:   "seed",
+	Short: "Seed anthem data for special entities (Palestine, Taiwan, Vatican)",
+	Long: `Insert anthem and audio records for non-UN-member entities that have
+national anthems but aren't populated by the standard data sources.
+This operation is idempotent — existing anthems are skipped.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		database, err := db.GetDB()
+		if err != nil {
+			return fmt.Errorf("failed to get database: %w", err)
+		}
+		defer database.Close()
+
+		fmt.Println("=== Seed Special Entities ===")
+		result, err := sources.SeedSpecialEntities(context.Background(), database)
+		if err != nil {
+			return fmt.Errorf("seed failed: %w", err)
+		}
+
+		fmt.Printf("Anthems inserted: %d\n", result.AnthemsInserted)
+		fmt.Printf("Audio inserted:   %d\n", result.AudioInserted)
+		fmt.Printf("Skipped:          %d\n", result.Skipped)
+		if result.Errors > 0 {
+			fmt.Printf("Errors:           %d\n", result.Errors)
+		}
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(dataCmd)
@@ -439,6 +468,7 @@ func init() {
 	dataCmd.AddCommand(dataSourcesCmd)
 	dataCmd.AddCommand(dataFormatCmd)
 	dataCmd.AddCommand(dataDownloadCmd)
+	dataCmd.AddCommand(dataSeedCmd)
 	
 	dataFormatCmd.Flags().StringP("format", "f", "json", "Output format (json)")
 	dataFormatCmd.Flags().StringP("output", "o", "./output", "Output directory")

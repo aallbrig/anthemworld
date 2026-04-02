@@ -21,6 +21,17 @@ import (
 //go:embed wikimedia.schema.sql
 var wikimediaSchema string
 
+// audioFallbackMap maps Wikidata anthem IDs to known Wikimedia Commons filenames
+// for countries where automated search strategies fail to find audio.
+var audioFallbackMap = map[string]string{
+	"Q464551":    "File:National anthem of Burkina Faso.oga",
+	"Q1045701":   "File:Kiribati Anthem Performed by US Navy Band.oga",
+	"Q108167408": "File:National Anthem of Afghanistan (Instrumental).ogg",
+	"Q602974":    "File:Belau rekid (instrumental).oga",
+	"Q862755":    "File:Hymne du Togo - salut a toi.ogg",
+	"Q161744":    "File:Mykhailo Zazuliak — Shche ne vmerla Ukraina.oga",
+}
+
 // WikimediaSource downloads anthem audio files from Wikimedia Commons
 type WikimediaSource struct {
 	id   string
@@ -298,10 +309,19 @@ func (w *WikimediaSource) Download(ctx context.Context, db *sql.DB, logger *jobs
 			if len(audioFiles) > 0 {
 				audioFiles = w.filterAudioByRelevance(audioFiles, ca.anthemName, ca.countryName)
 			}
-			if len(audioFiles) == 0 {
-				skipped++
-				continue
+		}
+
+		if len(audioFiles) == 0 {
+			// Strategy 3: Manual fallback for countries where search fails
+			if fallbackFile, ok := audioFallbackMap[ca.wikidataID]; ok {
+				logger.Infof("Using manual fallback audio for %s: %s", ca.countryName, fallbackFile)
+				audioFiles = []string{fallbackFile}
 			}
+		}
+
+		if len(audioFiles) == 0 {
+			skipped++
+			continue
 		}
 
 		logger.Infof("Found %d audio files for %s (%s)", len(audioFiles), ca.countryName, ca.anthemName)

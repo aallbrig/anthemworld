@@ -4,6 +4,40 @@ import (
 	"testing"
 )
 
+func TestAudioFallbackMap(t *testing.T) {
+	// Verify the fallback map contains known-missing countries
+	expectedEntries := map[string]string{
+		"Q464551":   "File:National anthem of Burkina Faso.oga",                       // Burkina Faso
+		"Q1045701":  "File:Kiribati Anthem Performed by US Navy Band.oga",             // Kiribati
+		"Q108167408": "File:National Anthem of Afghanistan (Instrumental).ogg",        // Afghanistan
+		"Q602974":   "File:Belau rekid (instrumental).oga",                            // Palau
+		"Q862755":   "File:Hymne du Togo - salut a toi.ogg",                          // Togo
+		"Q161744":   "File:Mykhailo Zazuliak — Shche ne vmerla Ukraina.oga",          // Ukraine
+	}
+
+	for wikidataID, expectedFile := range expectedEntries {
+		file, ok := audioFallbackMap[wikidataID]
+		if !ok {
+			t.Errorf("audioFallbackMap missing entry for %s", wikidataID)
+			continue
+		}
+		if file != expectedFile {
+			t.Errorf("audioFallbackMap[%s] = %q, want %q", wikidataID, file, expectedFile)
+		}
+	}
+
+	// Ensure countries with no audio are NOT in the map
+	noAudioCountries := []string{
+		"Q188662",  // Bosnia (only former anthem audio)
+		"Q857953",  // Solomon Islands (no audio on Wikimedia)
+	}
+	for _, id := range noAudioCountries {
+		if _, ok := audioFallbackMap[id]; ok {
+			t.Errorf("audioFallbackMap should NOT contain %s (no valid audio)", id)
+		}
+	}
+}
+
 func TestDeterministicRecordingID(t *testing.T) {
 	tests := []struct {
 		name      string

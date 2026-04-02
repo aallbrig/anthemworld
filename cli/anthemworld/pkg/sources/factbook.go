@@ -282,11 +282,46 @@ func countryNeedsFactbookEnrichment(db *sql.DB, countryID string) (bool, error) 
 	return !code.Valid || code.String == "", nil
 }
 
+// ciaToISO maps CIA country codes to ISO alpha-2 codes where they differ.
+// The CIA World Factbook uses its own code system that partially overlaps with ISO 3166-1.
+var ciaToISO = map[string]string{
+	"ag": "DZ", // Algeria
+	"ba": "BH", // Bahrain (not Bahamas — Bahamas is bf)
+	"bf": "BS", // Bahamas
+	"bh": "BZ", // Belize
+	"bm": "MM", // Myanmar (Burma)
+	"bn": "BJ", // Benin
+	"by": "BI", // Burundi
+	"ci": "CL", // Chile
+	"cn": "KM", // Comoros
+	"do": "DM", // Dominica
+	"gm": "DE", // Germany
+	"is": "IL", // Israel
+	"kn": "KP", // North Korea
+	"kr": "KI", // Kiribati
+	"li": "LR", // Liberia
+	"mu": "OM", // Oman
+	"pa": "PY", // Paraguay
+	"rs": "RU", // Russia
+	"st": "LC", // Saint Lucia
+	"to": "TG", // Togo
+	"za": "ZM", // Zambia
+}
+
 // matchCountry finds a country in our DB that matches the factbook profile.
-// Priority: exact CIA code match (for known mappings), then name matching.
+// Priority: CIA alias → direct ISO match → name matching.
 func (f *FactbookSource) matchCountry(db *sql.DB, ciaCode string, profile *factbookProfile) (string, error) {
-	// Some CIA codes match ISO alpha-2 directly
 	var countryID string
+
+	// Try known CIA-to-ISO mapping first
+	if iso, ok := ciaToISO[ciaCode]; ok {
+		err := db.QueryRow(`SELECT id FROM countries WHERE LOWER(iso_alpha2) = LOWER(?) LIMIT 1`, iso).Scan(&countryID)
+		if err == nil {
+			return countryID, nil
+		}
+	}
+
+	// Some CIA codes match ISO alpha-2 directly
 	err := db.QueryRow(`SELECT id FROM countries WHERE LOWER(iso_alpha2) = LOWER(?) LIMIT 1`, ciaCode).Scan(&countryID)
 	if err == nil {
 		return countryID, nil
