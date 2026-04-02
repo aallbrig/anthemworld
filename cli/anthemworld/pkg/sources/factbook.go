@@ -120,6 +120,7 @@ func (f *FactbookSource) Download(ctx context.Context, db *sql.DB, logger *jobs.
 
 	updated := 0
 	skipped := 0
+	alreadyHave := 0
 	errors := 0
 
 	for _, region := range factbookRegions {
@@ -156,6 +157,17 @@ func (f *FactbookSource) Download(ctx context.Context, db *sql.DB, logger *jobs.
 			countryID, err := f.matchCountry(db, ciaCode, profile)
 			if err != nil || countryID == "" {
 				skipped++
+				continue
+			}
+
+			// Skip countries already enriched from a previous run (resume support)
+			needs, err := countryNeedsFactbookEnrichment(db, countryID)
+			if err != nil {
+				errors++
+				continue
+			}
+			if !needs {
+				alreadyHave++
 				continue
 			}
 
@@ -209,10 +221,14 @@ func (f *FactbookSource) Download(ctx context.Context, db *sql.DB, logger *jobs.
 		// Rate limiting handled by httpclient rate limiter
 	}
 
-	_, _ = db.Exec(`INSERT OR REPLACE INTO factbook_metadata (key, value, updated_at) VALUES ('last_download', ?, CURRENT_TIMESTAMP)`, time.Now().Format(time.RFC3339))
-	_, _ = db.Exec(`INSERT OR REPLACE INTO factbook_metadata (key, value, updated_at) VALUES ('record_count', ?, CURRENT_TIMESTAMP)`, fmt.Sprintf("%d", updated))
+	if _, err := db.Exec(`INSERT OR REPLACE INTO factbook_metadata (key, value, updated_at) VALUES ('last_download', ?, CURRENT_TIMESTAMP)`, time.Now().Format(time.RFC3339)); err != nil {
+		return fmt.Errorf("failed to update last_download metadata: %w", err)
+	}
+	if _, err := db.Exec(`INSERT OR REPLACE INTO factbook_metadata (key, value, updated_at) VALUES ('record_count', ?, CURRENT_TIMESTAMP)`, fmt.Sprintf("%d", updated)); err != nil {
+		return fmt.Errorf("failed to update record_count metadata: %w", err)
+	}
 
-	logger.Infof("✓ Updated %d countries, skipped %d, %d errors", updated, skipped, errors)
+	logger.Infof("✓ Updated %d countries, skipped %d, already enriched %d, %d errors", updated, skipped, alreadyHave, errors)
 	return nil
 }
 
@@ -250,6 +266,20 @@ func (f *FactbookSource) fetchProfile(ctx context.Context, client *httpclient.Cl
 	}
 	var profile factbookProfile
 	return &profile, json.Unmarshal(body, &profile)
+}
+
+// countryNeedsFactbookEnrichment checks whether a country still needs Factbook data.
+// Returns true if the country has no factbook_code set (or doesn't exist).
+func countryNeedsFactbookEnrichment(db *sql.DB, countryID string) (bool, error) {
+	var code sql.NullString
+	err := db.QueryRow(`SELECT factbook_code FROM countries WHERE id = ?`, countryID).Scan(&code)
+	if err == sql.ErrNoRows {
+		return true, nil // country not found; let downstream logic handle it
+	}
+	if err != nil {
+		return false, err
+	}
+	return !code.Valid || code.String == "", nil
 }
 
 // matchCountry finds a country in our DB that matches the factbook profile.
