@@ -7,11 +7,11 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/anthemworld/cli/pkg/httpclient"
 	"github.com/anthemworld/cli/pkg/jobs"
 )
 
@@ -92,7 +92,8 @@ func (g *GeoJSONSource) Download(ctx context.Context, db *sql.DB, logger *jobs.J
 	}
 	
 	// 1. Download file
-	resp, err := http.Get(g.url)
+	client := httpclient.New(httpclient.WithTimeout(60 * time.Second))
+	resp, err := client.Get(ctx, g.url)
 	if err != nil {
 		return fmt.Errorf("failed to download: %w", err)
 	}
@@ -331,43 +332,20 @@ func updateBBox(data interface{}, bbox *[4]float64) {
 
 // HealthCheck checks if the GeoJSON source is accessible
 func (g *GeoJSONSource) HealthCheck(ctx context.Context) HealthStatus {
+	c := httpclient.New(httpclient.WithTimeout(10 * time.Second))
 	start := time.Now()
-	
-	req, err := http.NewRequestWithContext(ctx, "HEAD", g.url, nil)
+	resp, err := c.Head(ctx, g.url)
+	elapsed := time.Since(start).Milliseconds()
 	if err != nil {
-		return HealthStatus{
-			Healthy:      false,
-			StatusCode:   0,
-			Message:      fmt.Sprintf("Failed to create request: %v", err),
-			ResponseTime: time.Since(start).Milliseconds(),
-		}
-	}
-	
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return HealthStatus{
-			Healthy:      false,
-			StatusCode:   0,
-			Message:      fmt.Sprintf("Connection failed: %v", err),
-			ResponseTime: time.Since(start).Milliseconds(),
-		}
+		return HealthStatus{Healthy: false, Message: err.Error(), ResponseTime: elapsed}
 	}
 	defer resp.Body.Close()
-	
-	elapsed := time.Since(start).Milliseconds()
 	healthy := resp.StatusCode >= 200 && resp.StatusCode < 300
-	
-	message := "OK"
+	msg := "OK"
 	if !healthy {
-		message = fmt.Sprintf("Unexpected status code: %d", resp.StatusCode)
+		msg = fmt.Sprintf("Unexpected status code: %d", resp.StatusCode)
 	}
-	
-	return HealthStatus{
-		Healthy:      healthy,
-		StatusCode:   resp.StatusCode,
-		Message:      message,
-		ResponseTime: elapsed,
-	}
+	return HealthStatus{Healthy: healthy, StatusCode: resp.StatusCode, Message: msg, ResponseTime: elapsed}
 }
 
 // GetDataStats returns statistics about stored GeoJSON data

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anthemworld/cli/pkg/httpclient"
 	"github.com/anthemworld/cli/pkg/jobs"
 )
 
@@ -55,26 +56,10 @@ func (r *RestCountriesSource) GetTables() []string {
 
 // HealthCheck verifies the REST Countries API is accessible
 func (r *RestCountriesSource) HealthCheck(ctx context.Context) HealthStatus {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
+	c := httpclient.New(httpclient.WithTimeout(10 * time.Second))
 
 	start := time.Now()
-	req, err := http.NewRequestWithContext(ctx, "HEAD", r.url, nil)
-	if err != nil {
-		return HealthStatus{
-			Healthy:      false,
-			StatusCode:   0,
-			Message:      fmt.Sprintf("Failed to create request: %v", err),
-			ResponseTime: 0,
-		}
-	}
-
-	// Add User-Agent header (some APIs require it)
-	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
+	resp, err := c.Head(ctx, r.url)
 	elapsed := time.Since(start).Milliseconds()
 
 	if err != nil {
@@ -127,19 +112,9 @@ func (r *RestCountriesSource) Download(ctx context.Context, db *sql.DB, logger *
 
 	// Fetch data from API
 	logger.Infof("Fetching data from %s", r.url)
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
+	c := httpclient.New()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", r.url, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
+	resp, err := c.Get(ctx, r.url)
 	if err != nil {
 		return fmt.Errorf("failed to fetch data: %w", err)
 	}

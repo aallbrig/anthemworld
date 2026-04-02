@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anthemworld/cli/pkg/httpclient"
 	"github.com/anthemworld/cli/pkg/jobs"
 )
 
@@ -55,28 +56,12 @@ func (w *WikimediaSource) GetTables() []string {
 
 // HealthCheck verifies the Wikimedia Commons API is accessible
 func (w *WikimediaSource) HealthCheck(ctx context.Context) HealthStatus {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	// Simple test query to check API health
 	testURL := fmt.Sprintf("%s?action=query&meta=siteinfo&format=json", w.url)
 
+	c := httpclient.New(httpclient.WithTimeout(10 * time.Second))
+
 	start := time.Now()
-	req, err := http.NewRequestWithContext(ctx, "GET", testURL, nil)
-	if err != nil {
-		return HealthStatus{
-			Healthy:      false,
-			StatusCode:   0,
-			Message:      fmt.Sprintf("Failed to create request: %v", err),
-			ResponseTime: 0,
-		}
-	}
-
-	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
+	resp, err := c.Get(ctx, testURL)
 	elapsed := time.Since(start).Milliseconds()
 
 	if err != nil {
@@ -120,20 +105,13 @@ type WikidataEntityResponse struct {
 
 // getWikidataAudioFile looks up the canonical Wikimedia Commons audio file for an anthem
 // using Wikidata's P51 (audio) property. Returns the "File:Foo.ogg" title, or "" if not found.
-func (w *WikimediaSource) getWikidataAudioFile(ctx context.Context, client *http.Client, wikidataID string) (string, error) {
+func (w *WikimediaSource) getWikidataAudioFile(ctx context.Context, client *httpclient.Client, wikidataID string) (string, error) {
 	apiURL := fmt.Sprintf(
 		"https://www.wikidata.org/w/api.php?action=wbgetentities&ids=%s&props=claims&format=json",
 		url.QueryEscape(wikidataID),
 	)
 
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
+	resp, err := client.Get(ctx, apiURL)
 	if err != nil {
 		return "", err
 	}
@@ -218,9 +196,7 @@ func (w *WikimediaSource) Download(ctx context.Context, db *sql.DB, logger *jobs
 		return fmt.Errorf("failed to apply schema: %w", err)
 	}
 
-	client := &http.Client{
-		Timeout: 30 * time.Second,
-	}
+	client := httpclient.New(httpclient.WithRateLimit(5, 1))
 
 	// Get all countries that have anthems in our database
 	rows, err := db.Query(`
@@ -261,10 +237,12 @@ func (w *WikimediaSource) Download(ctx context.Context, db *sql.DB, logger *jobs
 
 	// For each country, search for audio files in Wikimedia Commons
 	for i, ca := range countries {
+		if err := httpclient.CheckContext(ctx); err != nil {
+			return fmt.Errorf("cancelled: %w", err)
+		}
+
 		if i > 0 && i%5 == 0 {
 			logger.Infof("Progress: %d/%d countries processed", i, len(countries))
-			// Rate limiting: sleep between batches
-			time.Sleep(3 * time.Second)
 		}
 
 		// Skip countries that already have audio recordings (makes re-runs resumable)
@@ -395,19 +373,11 @@ type fileInfo struct {
 }
 
 // searchAudioFiles searches for audio files using MediaWiki search API
-func (w *WikimediaSource) searchAudioFiles(ctx context.Context, client *http.Client, searchQuery string) ([]string, error) {
+func (w *WikimediaSource) searchAudioFiles(ctx context.Context, client *httpclient.Client, searchQuery string) ([]string, error) {
 	apiURL := fmt.Sprintf("%s?action=query&list=search&srsearch=%s&srnamespace=6&srlimit=10&format=json",
 		w.url, url.QueryEscape(searchQuery))
 
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
+	resp, err := client.Get(ctx, apiURL)
 	if err != nil {
 		return nil, err
 	}
@@ -478,19 +448,11 @@ func (w *WikimediaSource) filterAudioByRelevance(files []string, anthemName, cou
 }
 
 // getCategoryAudioFiles retrieves audio files from a Wikimedia Commons category
-func (w *WikimediaSource) getCategoryAudioFiles(ctx context.Context, client *http.Client, category string) ([]string, error) {
+func (w *WikimediaSource) getCategoryAudioFiles(ctx context.Context, client *httpclient.Client, category string) ([]string, error) {
 	apiURL := fmt.Sprintf("%s?action=query&list=categorymembers&cmtitle=%s&cmlimit=50&format=json",
 		w.url, url.QueryEscape(category))
 
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
+	resp, err := client.Get(ctx, apiURL)
 	if err != nil {
 		return nil, err
 	}
@@ -529,19 +491,11 @@ func (w *WikimediaSource) getCategoryAudioFiles(ctx context.Context, client *htt
 }
 
 // getFileInfo retrieves metadata for a specific file
-func (w *WikimediaSource) getFileInfo(ctx context.Context, client *http.Client, fileName string) (*fileInfo, error) {
+func (w *WikimediaSource) getFileInfo(ctx context.Context, client *httpclient.Client, fileName string) (*fileInfo, error) {
 	apiURL := fmt.Sprintf("%s?action=query&titles=%s&prop=imageinfo&iiprop=url|size|mime|mediatype&format=json",
 		w.url, url.QueryEscape(fileName))
 
-	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
+	resp, err := client.Get(ctx, apiURL)
 	if err != nil {
 		return nil, err
 	}

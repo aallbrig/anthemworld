@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anthemworld/cli/pkg/httpclient"
 	"github.com/anthemworld/cli/pkg/jobs"
 )
 
@@ -68,30 +69,14 @@ func (w *WikidataSource) GetTables() []string {
 
 // HealthCheck verifies the Wikidata SPARQL endpoint is accessible
 func (w *WikidataSource) HealthCheck(ctx context.Context) HealthStatus {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
 	// Simple test query
 	testQuery := "SELECT ?item WHERE { ?item wdt:P31 wd:Q6256 } LIMIT 1"
-	
 	reqURL := fmt.Sprintf("%s?query=%s&format=json", w.url, url.QueryEscape(testQuery))
-	
+
+	c := httpclient.New(httpclient.WithTimeout(10 * time.Second))
+
 	start := time.Now()
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
-	if err != nil {
-		return HealthStatus{
-			Healthy:      false,
-			StatusCode:   0,
-			Message:      fmt.Sprintf("Failed to create request: %v", err),
-			ResponseTime: 0,
-		}
-	}
-
-	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
+	resp, err := c.Get(ctx, reqURL)
 	elapsed := time.Since(start).Milliseconds()
 
 	if err != nil {
@@ -164,22 +149,12 @@ func (w *WikidataSource) Download(ctx context.Context, db *sql.DB, logger *jobs.
 
 	// Execute SPARQL query
 	logger.Infof("Querying Wikidata SPARQL endpoint: %s", w.url)
-	
+
 	reqURL := fmt.Sprintf("%s?query=%s&format=json", w.url, url.QueryEscape(wikidataSPARQLQuery))
-	
-	client := &http.Client{
-		Timeout: 60 * time.Second,
-	}
 
-	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
+	c := httpclient.New(httpclient.WithTimeout(60 * time.Second))
 
-	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
+	resp, err := c.Get(ctx, reqURL)
 	if err != nil {
 		return fmt.Errorf("failed to query Wikidata: %w", err)
 	}

@@ -12,6 +12,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/anthemworld/cli/pkg/httpclient"
 	"github.com/anthemworld/cli/pkg/jobs"
 )
 
@@ -63,15 +64,10 @@ func (f *FactbookSource) GetSchemaVersion() int    { return factbookSchemaVersio
 func (f *FactbookSource) GetTables() []string      { return []string{"factbook_metadata"} }
 
 func (f *FactbookSource) HealthCheck(ctx context.Context) HealthStatus {
-	client := &http.Client{Timeout: 10 * time.Second}
+	c := httpclient.New(httpclient.WithTimeout(10 * time.Second))
 	testURL := factbookRawBase + "/north-america/us.json"
 	start := time.Now()
-	req, err := http.NewRequestWithContext(ctx, "HEAD", testURL, nil)
-	if err != nil {
-		return HealthStatus{Healthy: false, Message: err.Error()}
-	}
-	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
-	resp, err := client.Do(req)
+	resp, err := c.Head(ctx, testURL)
 	elapsed := time.Since(start).Milliseconds()
 	if err != nil {
 		return HealthStatus{Healthy: false, Message: err.Error(), ResponseTime: elapsed}
@@ -120,13 +116,17 @@ func (f *FactbookSource) Download(ctx context.Context, db *sql.DB, logger *jobs.
 		return fmt.Errorf("failed to apply schema: %w", err)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	client := httpclient.New(httpclient.WithRateLimit(2, 1))
 
 	updated := 0
 	skipped := 0
 	errors := 0
 
 	for _, region := range factbookRegions {
+		if err := httpclient.CheckContext(ctx); err != nil {
+			return fmt.Errorf("cancelled: %w", err)
+		}
+
 		logger.Infof("Processing region: %s", region)
 
 		entries, err := f.listRegionFiles(ctx, client, region)
@@ -137,6 +137,10 @@ func (f *FactbookSource) Download(ctx context.Context, db *sql.DB, logger *jobs.
 		}
 
 		for _, entry := range entries {
+			if err := httpclient.CheckContext(ctx); err != nil {
+				return fmt.Errorf("cancelled: %w", err)
+			}
+
 			if !strings.HasSuffix(entry.Name, ".json") {
 				continue
 			}
@@ -202,8 +206,7 @@ func (f *FactbookSource) Download(ctx context.Context, db *sql.DB, logger *jobs.
 			}
 			updated++
 		}
-		// Brief pause between regions to be polite
-		time.Sleep(500 * time.Millisecond)
+		// Rate limiting handled by httpclient rate limiter
 	}
 
 	_, _ = db.Exec(`INSERT OR REPLACE INTO factbook_metadata (key, value, updated_at) VALUES ('last_download', ?, CURRENT_TIMESTAMP)`, time.Now().Format(time.RFC3339))
@@ -213,15 +216,9 @@ func (f *FactbookSource) Download(ctx context.Context, db *sql.DB, logger *jobs.
 	return nil
 }
 
-func (f *FactbookSource) listRegionFiles(ctx context.Context, client *http.Client, region string) ([]factbookDirEntry, error) {
-	url := fmt.Sprintf("%s/%s", factbookAPIBase, region)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
-	req.Header.Set("Accept", "application/json")
-	resp, err := client.Do(req)
+func (f *FactbookSource) listRegionFiles(ctx context.Context, client *httpclient.Client, region string) ([]factbookDirEntry, error) {
+	reqURL := fmt.Sprintf("%s/%s", factbookAPIBase, region)
+	resp, err := client.Get(ctx, reqURL)
 	if err != nil {
 		return nil, err
 	}
@@ -237,14 +234,9 @@ func (f *FactbookSource) listRegionFiles(ctx context.Context, client *http.Clien
 	return entries, json.Unmarshal(body, &entries)
 }
 
-func (f *FactbookSource) fetchProfile(ctx context.Context, client *http.Client, region, ciaCode string) (*factbookProfile, error) {
-	url := fmt.Sprintf("%s/%s/%s.json", factbookRawBase, region, ciaCode)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "AnthemWorld-CLI/1.0")
-	resp, err := client.Do(req)
+func (f *FactbookSource) fetchProfile(ctx context.Context, client *httpclient.Client, region, ciaCode string) (*factbookProfile, error) {
+	reqURL := fmt.Sprintf("%s/%s/%s.json", factbookRawBase, region, ciaCode)
+	resp, err := client.Get(ctx, reqURL)
 	if err != nil {
 		return nil, err
 	}
