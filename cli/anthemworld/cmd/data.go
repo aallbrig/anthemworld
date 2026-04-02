@@ -250,8 +250,18 @@ var dataFormatCmd = &cobra.Command{
 var dataDownloadCmd = &cobra.Command{
 	Use:   "download [source-id...]",
 	Short: "Download data from sources",
-	Long:  `Download data from all or specified data sources. Pass source IDs to download only those sources (e.g. "anthemworld data download wikimedia-commons factbook-json").`,
+	Long: `Download data from all or specified data sources. Pass source IDs to download
+only those sources (e.g. "anthemworld data download wikimedia-commons factbook-json").
+
+By default, sources that have been downloaded recently (within 30 days) are skipped.
+Use --force to download all sources regardless of freshness.
+Use --dry-run to see what would be downloaded without actually doing it.
+Use --export to automatically export data to JSON after downloading.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		force, _ := cmd.Flags().GetBool("force")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		export, _ := cmd.Flags().GetString("export")
+
 		database, err := db.GetDB()
 		if err != nil {
 			return fmt.Errorf("failed to get database: %w", err)
@@ -263,7 +273,6 @@ var dataDownloadCmd = &cobra.Command{
 		// Filter sources by args if provided
 		allSources := sources.AllSources
 		if len(args) > 0 {
-			// Build lookup set from args
 			requested := make(map[string]bool, len(args))
 			for _, a := range args {
 				requested[a] = true
@@ -275,7 +284,6 @@ var dataDownloadCmd = &cobra.Command{
 				}
 			}
 			if len(filtered) == 0 {
-				// List available IDs to help the user
 				fmt.Println("No matching sources found. Available source IDs:")
 				for _, s := range allSources {
 					fmt.Printf("  %s\n", s.ID())
@@ -285,9 +293,50 @@ var dataDownloadCmd = &cobra.Command{
 			allSources = filtered
 		}
 
+		// Filter by freshness unless --force
+		var toDownload []sources.DataSource
+		var skippedFresh []string
+		if force {
+			toDownload = allSources
+		} else {
+			for _, s := range allSources {
+				needs, err := s.NeedsUpdate(database)
+				if err != nil {
+					// On error, include it
+					toDownload = append(toDownload, s)
+					continue
+				}
+				if needs {
+					toDownload = append(toDownload, s)
+				} else {
+					skippedFresh = append(skippedFresh, s.Name())
+				}
+			}
+		}
+
+		if len(skippedFresh) > 0 {
+			fmt.Printf("Skipping %d fresh source(s): %s\n", len(skippedFresh), strings.Join(skippedFresh, ", "))
+			fmt.Println("  (use --force to re-download)")
+		}
+
+		if len(toDownload) == 0 {
+			fmt.Println("\nAll sources are up to date. Nothing to download.")
+			return nil
+		}
+
+		// Dry-run mode: just show what would happen
+		if dryRun {
+			fmt.Printf("\n[dry-run] Would download from %d source(s):\n", len(toDownload))
+			for i, s := range toDownload {
+				fmt.Printf("  %d. %s (%s)\n", i+1, s.Name(), s.ID())
+			}
+			return nil
+		}
+
 		// Create job
 		jobID, err := jobs.CreateJob(database, "data-download", map[string]interface{}{
 			"sources": strings.Join(args, ","),
+			"force":   force,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to create job: %w", err)
@@ -295,28 +344,24 @@ var dataDownloadCmd = &cobra.Command{
 
 		fmt.Printf("Created job: %s\n\n", jobID)
 
-		// Create logger
 		logger := jobs.NewJobLogger(database, jobID)
 
-		// Start job
 		if err := jobs.StartJob(database, jobID); err != nil {
 			return fmt.Errorf("failed to start job: %w", err)
 		}
 
-		// Download from selected sources
 		ctx := context.Background()
 		successCount := 0
 		failCount := 0
 
-		for i, source := range allSources {
-			fmt.Printf("[%d/%d] %s\n", i+1, len(allSources), source.Name())
-			logger.Infof("Starting download from %s", source.Name())
+		for i, source := range toDownload {
+			fmt.Printf("[%d/%d] %s\n", i+1, len(toDownload), source.Name())
+			logger.Infof("Starting download from %s (%d/%d)", source.Name(), i+1, len(toDownload))
 
-			// Update job metadata with current source checkpoint
 			jobs.UpdateJobMetadata(database, jobID, map[string]interface{}{
 				"current_source": source.ID(),
 				"source_index":   i + 1,
-				"source_total":   len(allSources),
+				"source_total":   len(toDownload),
 			})
 
 			if err := source.Download(ctx, database, logger); err != nil {
@@ -356,13 +401,30 @@ var dataDownloadCmd = &cobra.Command{
 		}
 
 		fmt.Println("=== Download Summary ===")
-		fmt.Printf("✓ Success: %d sources\n", successCount)
+		fmt.Printf("✓ Success: %d/%d sources\n", successCount, len(toDownload))
 		if failCount > 0 {
-			fmt.Printf("✗ Failed: %d sources\n", failCount)
+			fmt.Printf("✗ Failed: %d/%d sources\n", failCount, len(toDownload))
 		}
-		fmt.Printf("\nNext steps:")
-		fmt.Printf("\n  1. Check status: anthemworld data sources")
-		fmt.Printf("\n  2. Export data: anthemworld data format --output hugo/site/static/data\n")
+
+		// Auto-export if --export is specified
+		if export != "" {
+			fmt.Printf("\nExporting data to %s...\n", export)
+			absOutput, err := filepath.Abs(export)
+			if err != nil {
+				return fmt.Errorf("failed to resolve export path: %w", err)
+			}
+			if err := os.MkdirAll(absOutput, 0755); err != nil {
+				return fmt.Errorf("failed to create export directory: %w", err)
+			}
+			if err := format.ExportToDir(database, absOutput); err != nil {
+				return fmt.Errorf("export failed: %w", err)
+			}
+			fmt.Println("✓ Export complete")
+		} else {
+			fmt.Printf("\nNext steps:")
+			fmt.Printf("\n  1. Check status: anthemworld data sources")
+			fmt.Printf("\n  2. Export data: anthemworld data format --output hugo/site/static/data\n")
+		}
 
 		return nil
 	},
@@ -380,4 +442,8 @@ func init() {
 	
 	dataFormatCmd.Flags().StringP("format", "f", "json", "Output format (json)")
 	dataFormatCmd.Flags().StringP("output", "o", "./output", "Output directory")
+
+	dataDownloadCmd.Flags().Bool("force", false, "Download all sources regardless of freshness")
+	dataDownloadCmd.Flags().Bool("dry-run", false, "Show what would be downloaded without actually downloading")
+	dataDownloadCmd.Flags().String("export", "", "Auto-export data to this directory after download")
 }
