@@ -44,6 +44,8 @@ LOCALE_STRINGS = {
         "listen_heading":       "## Listen",
         "recording_singular":   "audio recording available.",
         "recording_plural":     "audio recordings available.",
+        "period":               ".",
+        "clause_sep":           ". ",
     },
     "es": {
         "is_a_country":         "es un país",
@@ -59,6 +61,25 @@ LOCALE_STRINGS = {
         "listen_heading":       "## Escuchar",
         "recording_singular":   "grabación de audio disponible.",
         "recording_plural":     "grabaciones de audio disponibles.",
+        "period":               ".",
+        "clause_sep":           ". ",
+    },
+    "zh-cn": {
+        "is_a_country":         "是一个国家",
+        "in":                   "位于",
+        "capital_intro":        "首都是",
+        "anthem_intro":         "国歌是",
+        "anthem_heading":       "## 国歌",
+        "english_title_label":  "**英文名称：**",
+        "composer_label":       "**作曲：**",
+        "lyricist_label":       "**作词：**",
+        "adopted_label":        "**采用时间：**",
+        "learn_more":           "在Wikidata上了解更多",
+        "listen_heading":       "## 试听",
+        "recording_singular":   "条音频录音可用。",
+        "recording_plural":     "条音频录音可用。",
+        "period":               "。",
+        "clause_sep":           "，",
     },
 }
 
@@ -127,24 +148,29 @@ def build_content(country, locale="en"):
 
     lines = []
 
-    # Intro paragraph
+    p = s["period"]        # sentence terminator: "." or "。"
+    sep = s["clause_sep"]  # between clauses: ". " or "，"
+
+    # Intro paragraph — built as clauses joined by separator, period at end.
     if region or subregion:
         location = f"{subregion}, {region}" if subregion else region
-        location_phrase = f" {s['in']} {location}"
+        location_phrase = f"{'，' if sep == '，' else ' '}{s['in']} {location}"
     else:
         location_phrase = ""
 
     if anthem_name:
         title_str = f' ("{anthem_title_en}")' if anthem_title_en else ""
-        intro = f"**{name}** {s['is_a_country']}{location_phrase}."
+        clauses = [f"**{name}** {s['is_a_country']}{location_phrase}"]
         if capital:
-            intro += f" {s['capital_intro']} {capital}."
-        intro += f" {s['anthem_intro']} *{anthem_name}*{title_str}."
+            clauses.append(f"{s['capital_intro']} {capital}")
+        clauses.append(f"{s['anthem_intro']} *{anthem_name}*{title_str}")
+        intro = sep.join(clauses) + p
         lines.append(intro)
     else:
-        intro = f"**{name}** {s['is_a_country']}{location_phrase}."
+        clauses = [f"**{name}** {s['is_a_country']}{location_phrase}"]
         if capital:
-            intro += f" {s['capital_intro']} {capital}."
+            clauses.append(f"{s['capital_intro']} {capital}")
+        intro = sep.join(clauses) + p
         lines.append(intro)
 
     lines.append("")

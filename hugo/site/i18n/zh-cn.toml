@@ -1,0 +1,419 @@
+[nav_brand]
+other = "🌍 Anthem World"
+
+[nav_toggle]
+other = "切换导航"
+
+[nav_language]
+other = "语言"
+
+[nav_home]
+other = "首页"
+
+[nav_map]
+other = "地图"
+
+[nav_countries]
+other = "国家"
+
+[nav_game]
+other = "🎵 对战"
+
+[nav_leaderboard]
+other = "🏆 排行榜"
+
+[nav_profile]
+other = "📈 档案"
+
+[footer_title]
+other = "Anthem World"
+
+[footer_tagline]
+other = "探索联合国193个会员国的国歌。"
+
+[footer_quick_links]
+other = "快速链接"
+
+[footer_interactive_map]
+other = "互动地图"
+
+[footer_countries_table]
+other = "国家列表"
+
+[footer_share_title]
+other = "分享本页"
+
+[footer_share_scan]
+other = "扫码分享："
+
+[footer_copyright]
+other = "&copy; 2026 Anthem World。数据来源：REST Countries API、Wikidata、Wikimedia Commons。"
+
+[home_top3_fallback_html]
+other = "还没有投票——<a href=\"{gameUrl}\">成为第一个投票的人！</a>"
+
+[map_error_country_data]
+other = "无法加载国家数据"
+
+[map_unknown_country]
+other = "未知国家"
+
+[map_music]
+other = "音乐"
+
+[map_lyrics]
+other = "歌词"
+
+[map_adopted]
+other = "采用时间"
+
+[map_no_anthem]
+other = "暂无国歌数据。"
+
+[map_capital]
+other = "首都"
+
+[country_detail_page_title]
+other = "国家详情"
+
+[country_detail_loading]
+other = "加载中…"
+
+[country_detail_error]
+other = "无法加载国家数据。"
+
+[country_detail_capital]
+other = "首都"
+
+[country_detail_subregion]
+other = "所属区域"
+
+[country_detail_anthem_header]
+other = "国歌"
+
+[country_detail_listen_header]
+other = "试听"
+
+[country_detail_no_audio_text]
+other = "该国歌的音频录音暂不可用。"
+
+[country_detail_no_audio_link]
+other = "Wikimedia Commons ↗"
+
+[country_detail_identity_header]
+other = "国家标识"
+
+[country_detail_composer]
+other = "作曲"
+
+[country_detail_lyricist]
+other = "作词"
+
+[country_detail_wikipedia]
+other = "维基百科"
+
+[country_detail_read_more]
+other = "了解更多 ↗"
+
+[country_detail_license]
+other = "许可证"
+
+[country_detail_colors]
+other = "国家颜色"
+
+[country_detail_symbols]
+other = "国家象征"
+
+[countries_page_title]
+other = "国家与国歌"
+
+[countries_heading]
+other = "国家与国歌"
+
+[countries_lead]
+other = "浏览和搜索联合国193个会员国及其国歌。"
+
+[countries_data_missing_html]
+other = "未找到国歌数据。请尝试：<code>anthemworld data download rest-countries-api wikidata-sparql && anthemworld data format --output hugo/site/static/data</code>"
+
+[countries_data_not_generated_html]
+other = "未找到国歌数据。请运行 <code>anthemworld data format --output hugo/site/static/data</code> 生成数据。"
+
+[countries_column_flag]
+other = "国旗"
+
+[countries_column_country]
+other = "国家"
+
+[countries_column_national_anthem]
+other = "国歌"
+
+[countries_column_english_title]
+other = "英文名称"
+
+[countries_column_adopted]
+other = "采用时间"
+
+[countries_column_composer]
+other = "作曲"
+
+[countries_column_region]
+other = "地区"
+
+[countries_column_audio]
+other = "音频"
+
+[countries_column_audio_format]
+other = "音频格式"
+
+[countries_badge_none]
+other = "无"
+
+[countries_no_data_title]
+other = "暂无数据。"
+
+[countries_summary_html]
+other = "已加载 <strong>{rows}</strong> 个国家 &mdash; <strong>{withAnthem}</strong> 个有国歌数据，<strong>{withAudio}</strong> 个有音频"
+
+[datatable_search]
+other = "搜索："
+
+[datatable_length_menu]
+other = "每页显示 _MENU_ 条"
+
+[datatable_info]
+other = "显示第 _START_ 至 _END_ 条，共 _TOTAL_ 个国家"
+
+[datatable_info_empty]
+other = "未找到国家"
+
+[datatable_info_filtered]
+other = "（从 _MAX_ 条中筛选）"
+
+[datatable_all]
+other = "全部"
+
+[leaderboard_page_title]
+other = "国歌排行榜"
+
+[leaderboard_heading]
+other = "🏆 国歌排行榜"
+
+[leaderboard_lead]
+other = "根据社区投票的ELO评分对国家进行排名。"
+
+[leaderboard_play_button]
+other = "🎵 国歌对战"
+
+[leaderboard_stats_countries]
+other = "国家数："
+
+[leaderboard_stats_updated]
+other = "更新时间："
+
+[leaderboard_loading]
+other = "加载排名中…"
+
+[leaderboard_error_title]
+other = "排名暂不可用。"
+
+[leaderboard_retry]
+other = "重试"
+
+[leaderboard_show_top]
+other = "显示前"
+
+[leaderboard_countries_suffix]
+other = "个国家"
+
+[leaderboard_limit_all]
+other = "全部"
+
+[leaderboard_column_rank]
+other = "#"
+
+[leaderboard_column_country]
+other = "国家"
+
+[leaderboard_column_anthem]
+other = "国歌"
+
+[leaderboard_column_elo]
+other = "ELO"
+
+[leaderboard_column_wins]
+other = "胜"
+
+[leaderboard_column_losses]
+other = "负"
+
+[leaderboard_column_win_pct]
+other = "胜率"
+
+[leaderboard_empty_html]
+other = "还没有投票！<a href=\"/game/\">成为第一个投票的人。</a>"
+
+[leaderboard_empty_text]
+other = "还没有投票！"
+
+[leaderboard_empty_cta]
+other = "成为第一个投票的人。"
+
+[leaderboard_error_api_unreachable]
+other = "无法连接游戏API（{message}）。服务是否在运行？"
+
+[leaderboard_error_api_unconfigured]
+other = "游戏API地址未配置。"
+
+[game_page_title]
+other = "国歌对战"
+
+[game_heading]
+other = "🎵 国歌对战"
+
+[game_lead]
+other = "聆听两首国歌，投票选出你最喜欢的。"
+
+[game_session_starting]
+other = "正在创建会话…"
+
+[game_votes_label]
+other = "投票数："
+
+[game_how_it_works_button]
+other = "❓ 玩法说明"
+
+[game_how_it_works_heading]
+other = "国歌对战玩法"
+
+[game_rule_listen_html]
+other = "<strong>先听：</strong>每首国歌至少听 <strong>10秒</strong>，你的投票才能获得完整权重。听得越多，投票影响力越大。"
+
+[game_rule_bonus_html]
+other = "<strong>完整试听奖励：</strong>达到10秒后会出现第二条橙色进度条。听完<em>整首</em>国歌可获得额外ELO加成（两首都听完最高可达+50%）。完全可选——奖励等你来拿。"
+
+[game_rule_vote_html]
+other = "<strong>投票：</strong>点击「为这首国歌投票」来选出胜者。另一首将记为败。"
+
+[game_rule_elo_html]
+other = "<strong>ELO评分：</strong>胜负会更新每个国家的ELO分数（初始1500，K=32）。击败排名更高的国家可获得更多分数。"
+
+[game_rule_wildcard_html]
+other = "<strong>外卡：</strong>偶尔会有排名较低的国歌对阵排名较高的——爆冷值更多分。"
+
+[game_rule_skip_html]
+other = "<strong>跳过：</strong>不感兴趣？跳过当前对阵，获取新的一组。"
+
+[game_session_note]
+other = "你的会话保存在此浏览器标签页中。投票匿名。"
+
+[game_loading]
+other = "加载中…"
+
+[game_fetching_matchup]
+other = "获取对阵中…"
+
+[game_error_title]
+other = "错误"
+
+[game_try_again]
+other = "重试"
+
+[game_flag_alt]
+other = "国旗"
+
+[game_listen_progress_title]
+other = "试听进度（达到完整投票权重）"
+
+[game_listen_status_heard]
+other = "⏱ 已听 <span id=\"listen-timer-{side}\">{seconds}</span> 秒"
+
+[game_seconds_heard_suffix]
+other = "秒已听"
+
+[game_bonus_progress_title]
+other = "奖励：听完整首国歌可获额外ELO加成"
+
+[game_bonus_status_html]
+other = "🎵 <span id=\"anthem-pct-{side}\">{percent}</span>%——听完整首国歌可获ELO奖励！"
+
+[game_bonus_suffix]
+other = "——听完整首国歌可获ELO奖励！"
+
+[game_elo_label]
+other = "ELO："
+
+[game_vote_button]
+other = "👍 为这首国歌投票"
+
+[game_vs]
+other = "VS"
+
+[game_wildcard_badge]
+other = "🎲 外卡"
+
+[game_skip_button]
+other = "⏭ 跳过此对阵"
+
+[game_weight_hint_html]
+other = "🎧 每首国歌至少听 <strong>10秒</strong>，你的投票才能获得完整权重。听得越多，你的意见越重要。"
+
+[game_full_weight]
+other = "✅ 已达完整权重！"
+
+[game_full_anthem_bonus]
+other = "🏅 已听完整首国歌！ELO奖励已应用。"
+
+[game_weight_full_html]
+other = "🏆 你的投票在本轮拥有<span class=\"text-success\">完整权重</span>！"
+
+[game_weight_partial_html]
+other = "当前投票权重：<span class=\"text-warning\">{weight}%</span>——继续试听以增加权重。"
+
+[game_network_error]
+other = "网络错误——API服务是否在运行？"
+
+[game_session_creating]
+other = "正在创建会话…"
+
+[game_session_label]
+other = "会话：{id}…"
+
+[game_error_too_many_sessions]
+other = "会话过多"
+
+[game_error_rate_limited]
+other = "已达到频率限制。请明天再试。"
+
+[game_error_session]
+other = "会话错误"
+
+[game_error_create_session]
+other = "无法创建会话。"
+
+[game_error_vote_limit]
+other = "已达投票上限"
+
+[game_error_vote_limit_default]
+other = "你今天的投票次数已达上限。"
+
+[game_error_matchup]
+other = "对阵错误"
+
+[game_error_load_matchup]
+other = "无法加载对阵。"
+
+[game_error_vote]
+other = "投票错误"
+
+[game_error_record_vote]
+other = "无法记录投票。"
+
+[game_flash_weight_note]
+other = "<div class=\"text-muted small mt-1 text-center\">⚖️ {weight}% 权重——继续试听以获得完整影响力</div>"
+
+[game_flash_bonus_note]
+other = "<div class=\"text-warning small mt-1 text-center\">🏅 完整国歌奖励已应用！</div>"
+
+[game_flash_vote_success_html]
+other = "<div class=\"fw-semibold fs-5 text-center\">✅ {winner} 胜出！</div><div class=\"mt-1 text-center\"><span class=\"badge bg-primary\">{new}</span> <span class=\"text-muted small\">(+{delta})</span></div>{note}"

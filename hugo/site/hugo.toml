@@ -17,6 +17,12 @@ title = 'Anthem World - National Anthems of the World'
     weight = 2
     [languages.es.params]
       description = "Explora los himnos nacionales de los 193 países reconocidos por la ONU mediante un mapa interactivo, páginas de países y clasificaciones de Anthem Battle."
+  [languages.zh-cn]
+    languageCode = 'zh-CN'
+    languageName = '简体中文'
+    weight = 3
+    [languages.zh-cn.params]
+      description = "通过互动地图、国家页面和国歌对战排名，探索联合国193个会员国的国歌。"
 
 [params]
   description = "Explore the national anthems of all 193 UN-recognized countries through an interactive world map"
