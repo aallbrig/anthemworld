@@ -11,7 +11,7 @@ BINARY     := anthemworld
 CLI_DIR    := cli/anthemworld
 INSTALL_DIR := $(HOME)/bin
 
-.PHONY: build install clean dev game-install game-up game-down game-init game-start game-dev dev-reset
+.PHONY: build install clean dev game-install game-up game-down game-init game-start game-dev dev-reset i18n-check
 
 build:
 	go build $(LDFLAGS) -o $(BINARY) ./$(CLI_DIR)
@@ -77,4 +77,10 @@ sam-restart:
 # Use when rate limits accumulate across test runs (e.g. MAX_SESSIONS_PER_IP exhausted).
 dev-reset:
 	./sam/game/scripts/dev-reset.sh
+
+# ── i18n ──────────────────────────────────────────────────────────────────────
+
+# Check that all i18n locale files have the same keys as en.toml.
+i18n-check:
+	./scripts/i18n-check.sh
 

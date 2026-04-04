@@ -3,12 +3,15 @@
 Generate Hugo country page body content from anthems.json.
 
 Reads hugo/site/static/data/anthems.json and updates each country's .md file
-with SEO-friendly body content, preserving the existing frontmatter.
+(and locale variants like .es.md) with SEO-friendly body content, preserving
+the existing frontmatter.
 
 Usage:
     python3 scripts/generate-country-pages.py
     python3 scripts/generate-country-pages.py --dry-run
     python3 scripts/generate-country-pages.py --iso USA GBR FRA
+    python3 scripts/generate-country-pages.py --lang es      # only Spanish
+    python3 scripts/generate-country-pages.py --lang en es    # both (default)
 """
 
 import json
@@ -20,6 +23,47 @@ import argparse
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ANTHEMS_JSON = os.path.join(REPO_ROOT, "hugo", "site", "static", "data", "anthems.json")
 COUNTRIES_DIR = os.path.join(REPO_ROOT, "hugo", "site", "content", "countries")
+
+
+# ── Locale templates ─────────────────────────────────────────────────────────
+# To add a new language: add a dict entry here with all the template strings,
+# then create the corresponding .{lang}.md frontmatter stubs in content/countries/.
+
+LOCALE_STRINGS = {
+    "en": {
+        "is_a_country":         "is a country",
+        "in":                   "in",
+        "capital_intro":        "Its capital is",
+        "anthem_intro":         "The national anthem is",
+        "anthem_heading":       "## National Anthem",
+        "english_title_label":  "**English title:**",
+        "composer_label":       "**Composer:**",
+        "lyricist_label":       "**Lyricist:**",
+        "adopted_label":        "**Adopted:**",
+        "learn_more":           "Learn more on Wikidata",
+        "listen_heading":       "## Listen",
+        "recording_singular":   "audio recording available.",
+        "recording_plural":     "audio recordings available.",
+    },
+    "es": {
+        "is_a_country":         "es un país",
+        "in":                   "en",
+        "capital_intro":        "Su capital es",
+        "anthem_intro":         "El himno nacional es",
+        "anthem_heading":       "## Himno Nacional",
+        "english_title_label":  "**Título en inglés:**",
+        "composer_label":       "**Compositor:**",
+        "lyricist_label":       "**Letrista:**",
+        "adopted_label":        "**Adoptado:**",
+        "learn_more":           "Más información en Wikidata",
+        "listen_heading":       "## Escuchar",
+        "recording_singular":   "grabación de audio disponible.",
+        "recording_plural":     "grabaciones de audio disponibles.",
+    },
+}
+
+# All supported locale suffixes (used to discover .{lang}.md files).
+SUPPORTED_LOCALES = list(LOCALE_STRINGS.keys())
 
 
 def load_anthems():
@@ -39,14 +83,21 @@ def parse_md_frontmatter(text):
     return frontmatter, body
 
 
-def get_frontmatter_iso(frontmatter_text):
-    """Extract iso field value from frontmatter."""
-    m = re.search(r'^iso:\s*"?([A-Z]{3})"?', frontmatter_text, re.MULTILINE)
+def get_frontmatter_field(frontmatter_text, field):
+    """Extract a quoted field value from frontmatter."""
+    m = re.search(rf'^{field}:\s*"([^"]*)"', frontmatter_text, re.MULTILINE)
     return m.group(1) if m else None
 
 
-def build_content(country):
-    """Build SEO markdown body content for a country page."""
+def get_frontmatter_iso(frontmatter_text):
+    """Extract iso field value from frontmatter."""
+    return get_frontmatter_field(frontmatter_text, "iso")
+
+
+def build_content(country, locale="en"):
+    """Build SEO markdown body content for a country page in the given locale."""
+    s = LOCALE_STRINGS[locale]
+
     name = country.get("common_name") or country.get("name", "")
     region = country.get("region", "")
     subregion = country.get("subregion", "")
@@ -71,7 +122,6 @@ def build_content(country):
     # If history is just "adopted YYYY", promote it to adopted_date if unset
     if history and re.match(r'^adopted\s+\d{4}$', history.strip(), re.IGNORECASE):
         if not adopted:
-            # Strip the "adopted " prefix since the label already says "Adopted"
             adopted = re.sub(r'^adopted\s+', '', history.strip(), flags=re.IGNORECASE)
         history = ""
 
@@ -80,45 +130,44 @@ def build_content(country):
     # Intro paragraph
     if region or subregion:
         location = f"{subregion}, {region}" if subregion else region
-        location_phrase = f" in {location}"
+        location_phrase = f" {s['in']} {location}"
     else:
         location_phrase = ""
 
     if anthem_name:
         title_str = f' ("{anthem_title_en}")' if anthem_title_en else ""
-        intro = f"**{name}** is a country{location_phrase}."
+        intro = f"**{name}** {s['is_a_country']}{location_phrase}."
         if capital:
-            intro += f" Its capital is {capital}."
-        intro += f" The national anthem is *{anthem_name}*{title_str}."
+            intro += f" {s['capital_intro']} {capital}."
+        intro += f" {s['anthem_intro']} *{anthem_name}*{title_str}."
         lines.append(intro)
     else:
-        intro = f"**{name}** is a country{location_phrase}."
+        intro = f"**{name}** {s['is_a_country']}{location_phrase}."
         if capital:
-            intro += f" Its capital is {capital}."
+            intro += f" {s['capital_intro']} {capital}."
         lines.append(intro)
 
     lines.append("")
 
     # Anthem details section
     if anthem_name:
-        lines.append("## National Anthem")
+        lines.append(s["anthem_heading"])
         lines.append("")
 
         details = []
         if anthem_title_en:
-            details.append(f"**English title:** {anthem_title_en}")
+            details.append(f"{s['english_title_label']} {anthem_title_en}")
         if composer:
-            details.append(f"**Composer:** {composer}")
+            details.append(f"{s['composer_label']} {composer}")
         if lyricist:
-            details.append(f"**Lyricist:** {lyricist}")
+            details.append(f"{s['lyricist_label']} {lyricist}")
         if adopted:
-            details.append(f"**Adopted:** {adopted}")
+            details.append(f"{s['adopted_label']} {adopted}")
         for d in details:
             lines.append(d)
             lines.append("")
 
         if history:
-            # Trim to a reasonable length for SEO (first ~800 chars)
             hist = history.strip()
             if len(hist) > 900:
                 hist = hist[:900].rsplit(" ", 1)[0] + "…"
@@ -127,17 +176,17 @@ def build_content(country):
 
         if wikidata_id:
             lines.append(
-                f'[Learn more on Wikidata](https://www.wikidata.org/wiki/{wikidata_id})'
+                f'[{s["learn_more"]}](https://www.wikidata.org/wiki/{wikidata_id})'
             )
             lines.append("")
 
     # Audio section
     if audio_files:
         count = len(audio_files)
-        noun = "recording" if count == 1 else "recordings"
-        lines.append(f"## Listen")
+        noun = s["recording_singular"] if count == 1 else s["recording_plural"]
+        lines.append(s["listen_heading"])
         lines.append("")
-        lines.append(f"{count} audio {noun} available.")
+        lines.append(f"{count} {noun}")
         lines.append("")
 
     return "\n".join(lines).strip() + "\n"
@@ -163,64 +212,112 @@ def update_md_file(filepath, content, dry_run=False):
     return True
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate country page content from anthems.json")
-    parser.add_argument("--dry-run", action="store_true", help="Preview without writing files")
-    parser.add_argument("--iso", nargs="+", metavar="ISO", help="Only update specific ISO codes (e.g. USA GBR)")
-    args = parser.parse_args()
+def file_suffix_for_locale(locale):
+    """Return the .md filename suffix for a locale (.md for en, .es.md for es, etc.)."""
+    if locale == "en":
+        return ".md"
+    return f".{locale}.md"
 
-    print(f"Loading anthem data from {ANTHEMS_JSON}")
-    anthems = load_anthems()
-    print(f"  {len(anthems)} countries loaded")
 
-    # Build lookup: ISO alpha-3 → country data (data is keyed by uppercase ISO-3)
-    iso_to_data = {k.upper(): v for k, v in anthems.items()}
+def collect_md_files(locale, target_isos=None):
+    """Collect country .md files for a given locale. Returns list of (filename, filepath)."""
+    suffix = file_suffix_for_locale(locale)
+    files = []
+    for f in os.listdir(COUNTRIES_DIR):
+        if not f.endswith(suffix):
+            continue
+        if f == "_index.md" or f.startswith("_index."):
+            continue
+        # For non-English locales, avoid matching a shorter suffix
+        # e.g. ".md" should not match ".es.md"
+        if locale == "en" and any(f.endswith(f".{lc}.md") for lc in SUPPORTED_LOCALES if lc != "en"):
+            continue
+        if target_isos:
+            # Derive ISO from filename: e.g. "usa.es.md" → "USA", "usa.md" → "USA"
+            base = f.replace(suffix, "").upper()
+            if base not in target_isos:
+                continue
+        files.append((f, os.path.join(COUNTRIES_DIR, f)))
+    return sorted(files, key=lambda x: x[0])
 
-    # Find all .md files
-    md_files = [
-        f for f in os.listdir(COUNTRIES_DIR)
-        if f.endswith(".md") and not f.endswith(".es.md") and f != "_index.md"
-    ]
 
-    if args.iso:
-        target_isos = {iso.upper() for iso in args.iso}
-        md_files = [f for f in md_files if f.replace(".md", "").upper() in target_isos]
-
+def process_locale(locale, iso_to_data, target_isos=None, dry_run=False):
+    """Generate content for all country pages in a given locale."""
+    suffix = file_suffix_for_locale(locale)
+    files = collect_md_files(locale, target_isos)
     updated = 0
     skipped = 0
     no_data = 0
 
-    for fname in sorted(md_files):
-        fpath = os.path.join(COUNTRIES_DIR, fname)
-
+    for fname, fpath in files:
         with open(fpath, "r", encoding="utf-8") as f:
             text = f.read()
 
         frontmatter, _ = parse_md_frontmatter(text)
         iso = get_frontmatter_iso(frontmatter)
         if not iso:
-            # Try deriving from filename
-            iso = fname.replace(".md", "").upper()
+            iso = fname.replace(suffix, "").upper()
 
         country_data = iso_to_data.get(iso)
         if not country_data:
             no_data += 1
             continue
 
-        content = build_content(country_data)
+        # Use the frontmatter title if available (may be localized)
+        title = get_frontmatter_field(frontmatter, "title")
+        if title:
+            localized_data = dict(country_data)
+            localized_data["common_name"] = title
+        else:
+            localized_data = country_data
 
-        if update_md_file(fpath, content, dry_run=args.dry_run):
+        content = build_content(localized_data, locale=locale)
+
+        if update_md_file(fpath, content, dry_run=dry_run):
             updated += 1
-            if args.dry_run and updated <= 3:
+            if dry_run and updated <= 3:
                 print(f"\n--- Preview: {fname} ---")
                 print(content[:400])
         else:
             skipped += 1
 
-    action = "Would update" if args.dry_run else "Updated"
-    print(f"\n{action}: {updated} files")
-    print(f"No anthem data: {no_data} files")
-    print(f"Skipped (no frontmatter): {skipped} files")
+    return updated, skipped, no_data
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate country page content from anthems.json")
+    parser.add_argument("--dry-run", action="store_true", help="Preview without writing files")
+    parser.add_argument("--iso", nargs="+", metavar="ISO", help="Only update specific ISO codes (e.g. USA GBR)")
+    parser.add_argument(
+        "--lang", nargs="+", metavar="LANG", default=SUPPORTED_LOCALES,
+        help=f"Locales to generate (default: all). Choices: {', '.join(SUPPORTED_LOCALES)}",
+    )
+    args = parser.parse_args()
+
+    # Validate locales
+    for lang in args.lang:
+        if lang not in LOCALE_STRINGS:
+            print(f"ERROR: unsupported locale '{lang}'. Available: {', '.join(SUPPORTED_LOCALES)}")
+            sys.exit(1)
+
+    print(f"Loading anthem data from {ANTHEMS_JSON}")
+    anthems = load_anthems()
+    print(f"  {len(anthems)} countries loaded")
+
+    iso_to_data = {k.upper(): v for k, v in anthems.items()}
+    target_isos = {iso.upper() for iso in args.iso} if args.iso else None
+
+    for locale in args.lang:
+        print(f"\n── {locale} ──")
+        updated, skipped, no_data = process_locale(
+            locale, iso_to_data, target_isos=target_isos, dry_run=args.dry_run
+        )
+        action = "Would update" if args.dry_run else "Updated"
+        print(f"  {action}: {updated} files")
+        if no_data:
+            print(f"  No anthem data: {no_data} files")
+        if skipped:
+            print(f"  Skipped (no frontmatter): {skipped} files")
 
     if args.dry_run:
         print("\nRe-run without --dry-run to apply changes.")
