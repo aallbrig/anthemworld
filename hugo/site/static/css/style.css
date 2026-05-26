@@ -11,7 +11,7 @@ main {
 #map {
     border: 2px solid #dee2e6;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
 }
 
 .leaflet-popup-content {
@@ -42,7 +42,7 @@ main {
 
 .card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
 }
 
 .audio-player {
@@ -61,10 +61,10 @@ footer {
 .country-tooltip {
     font-size: 14px;
     padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.95);
+    background: rgb(255 255 255 / 95%);
     border: 2px solid #0d6efd;
     border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
 }
 
 .country-tooltip strong {
@@ -102,7 +102,7 @@ footer {
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (width <= 768px) {
     #map {
         height: 400px !important;
     }

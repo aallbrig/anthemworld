@@ -64,7 +64,7 @@ function renderTable(data) {
         ? t('countries_data_missing_html')
         : t('countries_data_not_generated_html');
 
-    const table = $('#countries-table').DataTable({
+    $('#countries-table').DataTable({
         data: rows,
         columns: [
             { title: t('countries_column_flag'),        visible: false },   // 0 - hidden, drives render

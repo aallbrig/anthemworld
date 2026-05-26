@@ -116,7 +116,6 @@
   }
 
   function renderVoteStats(s, container) {
-    const pct = (n, total) => total > 0 ? `(${((n / total) * 100).toFixed(1)}%)` : '';
     container.innerHTML = `
       <div class="row g-3">
         <div class="col-md-3"><div class="card text-center p-3">

@@ -8,13 +8,6 @@ const t = (key, vars = {}, fallback = '') => {
     return translated ?? fallback ?? key;
 };
 
-function esc(value) {
-    return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
 
 // Load anthem data from generated JSON file
 async function loadAnthemData() {
@@ -293,7 +286,7 @@ function onCountryClick(e) {
 
     const popupContent = buildPopupContent(countryName, isoCode, countryRecord);
 
-    const popup = layer.bindPopup(popupContent, { maxWidth: 320 }).openPopup();
+    layer.bindPopup(popupContent, { maxWidth: 320 }).openPopup();
 
     // Register audio elements with global controller once popup DOM is ready
     layer.on('popupopen', function () {

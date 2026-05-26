@@ -76,8 +76,6 @@
     );
     const full = rows.filter(x => x.heard_full_anthem);
     const partial = rows.filter(x => !x.heard_full_anthem && (x.total_listen_ms > 0 || x.max_position_ms > 0 || x.heard_full_weight));
-    const unheard = rows.filter(x => !x.heard_full_anthem && !(x.total_listen_ms > 0 || x.max_position_ms > 0 || x.heard_full_weight));
-
     return {
       rows,
       stats: {
@@ -95,14 +93,6 @@
     const flag = item.flag_url
       ? `<img src="${esc(item.flag_url)}" alt="" style="height:18px;vertical-align:middle;margin-right:6px;" onerror="this.style.display='none'">`
       : '';
-    const anthemProgress = item.heard_full_anthem
-      ? '100'
-      : String(Math.round(item.completion_pct || 0));
-    const statusClass = item.heard_full_anthem
-      ? 'bg-warning text-dark'
-      : item.status_rank === 1
-        ? 'bg-info text-dark'
-        : 'bg-secondary';
     const audioHtml = item.audio_url
       ? global.AnthemAudioWidget.renderHTML({
           audioUrl: item.audio_url,

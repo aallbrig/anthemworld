@@ -145,7 +145,7 @@
       });
       const body = await res.json().catch(() => ({}));
       return { ok: res.ok, status: res.status, body };
-    } catch (err) {
+    } catch (_err) {
       // Network error (ECONNREFUSED, DNS failure, etc.)
       return { ok: false, status: 0, body: { message: t('game_network_error') } };
     }
@@ -227,7 +227,6 @@
   function updateListenProgress(side, totalMs) {
     const barEl    = $(side === 'a' ? 'listen-bar-a' : 'listen-bar-b');
     const statusEl = $(side === 'a' ? 'listen-status-a' : 'listen-status-b');
-    const timerEl  = $(side === 'a' ? 'listen-timer-a' : 'listen-timer-b');
     const pct      = Math.min(100, (totalMs / FULL_LISTEN_MS) * 100);
     const full     = pct >= 100;
     const wasAlreadyFull = barEl.classList.contains('aw-bar-shimmer');
