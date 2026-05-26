@@ -1,0 +1,329 @@
+---
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+vars:
+  SESSION: anthemworld
+  HUGO_PORT: '1319'
+  SAM_PORT: '3005'
+  CLI_DIR: cli/anthemworld
+  SAM_DIR: sam/game
+  HUGO_DIR: hugo/site
+  LOCALSTACK_URL: http://localhost:4566
+
+tasks:
+
+  # ── CI / quality gates ─────────────────────────────────────────────────────
+
+  ci:
+    desc: Full CI check — lint, test, and Hugo build (no live services required)
+    cmds:
+      - task: lint
+      - task: test
+      - task: site:build
+
+  test:
+    desc: Run all unit tests (Go CLI + Jest Lambda functions)
+    cmds:
+      - task: test:go
+      - task: test:js
+
+  test:go:
+    desc: Run Go unit tests for the CLI
+    dir: '{{.CLI_DIR}}'
+    cmds:
+      - go test ./...
+
+  test:js:
+    desc: Run Jest unit tests for the Lambda functions
+    dir: '{{.SAM_DIR}}/functions'
+    cmds:
+      - npm test
+
+  lint:
+    desc: Lint all source files (Go, JS, CSS, i18n)
+    cmds:
+      - task: lint:go
+      - task: lint:js:lambda
+      - task: lint:js:site
+      - task: lint:css
+      - task: lint:i18n
+
+  lint:go:
+    desc: Run golangci-lint on the CLI module
+    dir: '{{.CLI_DIR}}'
+    cmds:
+      - golangci-lint run ./...
+
+  lint:js:lambda:
+    desc: Run ESLint on Lambda functions (Node.js)
+    dir: '{{.SAM_DIR}}/functions'
+    cmds:
+      - npm run lint
+
+  lint:js:site:
+    desc: Run ESLint on Hugo site static JS
+    dir: '{{.HUGO_DIR}}'
+    cmds:
+      - npx eslint 'static/js/**/*.js'
+
+  lint:css:
+    desc: Run Stylelint on Hugo site CSS
+    dir: '{{.HUGO_DIR}}'
+    cmds:
+      - npx stylelint 'static/css/**/*.css'
+
+  lint:i18n:
+    desc: Check Hugo i18n locale files for missing/extra keys
+    cmds:
+      - bash scripts/i18n-check.sh
+
+  # ── Dev session ────────────────────────────────────────────────────────────
+
+  dev:
+    desc: Start the anthemworld dev environment; attaches if the session is already running
+    cmds:
+      - |
+        if tmux has-session -t {{.SESSION}} 2>/dev/null; then
+          echo "Session '{{.SESSION}}' is already running — attaching."
+          if [ -n "$TMUX" ]; then
+            tmux switch-client -t {{.SESSION}}
+          else
+            tmux attach -t {{.SESSION}}
+          fi
+          exit 0
+        fi
+        echo "Starting anthemworld dev session..."
+        tmuxinator start -p .tmuxinator/anthemworld.yml
+        echo ""
+        echo "  Session '{{.SESSION}}', two windows:"
+        echo "    0 dev        — panes 0-1 reserved, 2+ services"
+        echo "    1 bootstrap  — one-time setup (LocalStack, DynamoDB, SAM build)"
+        echo ""
+        echo "  Hugo:   http://localhost:{{.HUGO_PORT}}"
+        echo "  SAM:    http://localhost:{{.SAM_PORT}}"
+        echo ""
+        echo "  Reattach:   task dev:attach"
+        echo "  Recycle:    task dev:recycle  (from outside the session)"
+        echo "  Pane logs:  task dev:logs"
+        echo ""
+
+  dev:recycle:
+    desc: Kill and restart the anthemworld session (errors if called from inside the session)
+    cmds:
+      - |
+        if [ -n "$TMUX" ]; then
+          CURRENT=$(tmux display-message -p '#S' 2>/dev/null || echo "")
+          if [ "$CURRENT" = "{{.SESSION}}" ]; then
+            echo "ERROR: Cannot recycle '{{.SESSION}}' from inside it." >&2
+            echo "  Detach first (Ctrl-b d), then run: task dev:recycle" >&2
+            exit 1
+          fi
+        fi
+        if tmux has-session -t {{.SESSION}} 2>/dev/null; then
+          tmux kill-session -t {{.SESSION}}
+          echo "Session '{{.SESSION}}' stopped."
+        fi
+        echo "Starting fresh anthemworld dev session..."
+        tmuxinator start -p .tmuxinator/anthemworld.yml
+
+  dev:attach:
+    desc: Reattach to an existing anthemworld session without restarting services
+    cmds:
+      - |
+        if ! tmux has-session -t {{.SESSION}} 2>/dev/null; then
+          echo "No session '{{.SESSION}}' found. Run 'task dev' to start one."
+          exit 1
+        fi
+        if [ -n "$TMUX" ]; then
+          tmux switch-client -t {{.SESSION}}
+        else
+          tmux attach -t {{.SESSION}}
+        fi
+
+  # ── Bootstrap (one-time setup; all steps idempotent) ──────────────────────
+
+  bootstrap:
+    desc: One-time dev setup — LocalStack up, DynamoDB tables, seed rankings, SAM build
+    cmds:
+      - task: localstack:up
+      - task: localstack:init
+      - task: seed:rankings
+      - task: sam:build
+
+  # ── LocalStack ─────────────────────────────────────────────────────────────
+
+  localstack:up:
+    desc: Start LocalStack (DynamoDB) via Docker Compose and wait until healthy
+    cmds:
+      - |
+        if curl -sf {{.LOCALSTACK_URL}}/_localstack/health | grep -q '"dynamodb"' 2>/dev/null; then
+          echo "LocalStack already healthy — skipping start."
+          exit 0
+        fi
+        docker compose up -d
+        echo "Waiting for LocalStack at {{.LOCALSTACK_URL}}..."
+        until curl -sf {{.LOCALSTACK_URL}}/_localstack/health | grep -q '"dynamodb"'; do
+          sleep 2
+        done
+        echo "LocalStack ready."
+
+  localstack:down:
+    desc: Stop LocalStack
+    cmds:
+      - docker compose down
+
+  localstack:init:
+    desc: Create DynamoDB tables in LocalStack (idempotent)
+    cmds:
+      - bash {{.SAM_DIR}}/scripts/init-localstack.sh
+
+  localstack:logs:
+    desc: Stream LocalStack container logs
+    cmds:
+      - docker compose logs -f localstack
+
+  # ── Seed ───────────────────────────────────────────────────────────────────
+
+  seed:rankings:
+    desc: Seed ELO rankings in DynamoDB (skips if count >= 10)
+    cmds:
+      - bash {{.SAM_DIR}}/scripts/seed-rankings.sh
+
+  # ── SAM ────────────────────────────────────────────────────────────────────
+
+  sam:build:
+    desc: Build all SAM Lambda functions
+    dir: '{{.SAM_DIR}}'
+    cmds:
+      - sam build
+
+  sam:local:
+    desc: Start SAM local API on :{{.SAM_PORT}} (waits for LocalStack to be healthy first)
+    dir: '{{.SAM_DIR}}'
+    cmds:
+      - |
+        echo "Waiting for LocalStack before starting SAM..."
+        until curl -sf {{.LOCALSTACK_URL}}/_localstack/health | grep -q '"dynamodb"'; do
+          sleep 2
+        done
+        echo "LocalStack ready — starting SAM on :{{.SAM_PORT}}"
+      - >-
+        sam local start-api
+        --port {{.SAM_PORT}}
+        --env-vars env.local.json
+        --warm-containers LAZY
+        --skip-pull-image
+        --docker-network anthemworld_default
+
+  # ── Hugo site ──────────────────────────────────────────────────────────────
+
+  site:dev:
+    desc: Start Hugo dev server on :{{.HUGO_PORT}} with live reload
+    dir: '{{.HUGO_DIR}}'
+    cmds:
+      - hugo server --logLevel warn -p {{.HUGO_PORT}} --bind 0.0.0.0
+
+  site:build:
+    desc: Build the Hugo site (verifies it compiles cleanly)
+    dir: '{{.HUGO_DIR}}'
+    cmds:
+      - hugo --minify
+
+  # ── CLI ────────────────────────────────────────────────────────────────────
+
+  cli:build:
+    desc: Build the anthemworld CLI binary to /tmp/anthemworld-dev
+    cmds:
+      - go build -o /tmp/anthemworld-dev ./cli/anthemworld
+
+  cli:watch:
+    desc: Rebuild the CLI on cli/**/*.go changes (requires reflex)
+    cmds:
+      - reflex -r 'cli/.*\.go$' -s -- go build -o /tmp/anthemworld-dev ./cli/anthemworld
+
+  # ── i18n ───────────────────────────────────────────────────────────────────
+
+  i18n:check:
+    desc: Check all i18n locale files have the same keys as en.toml
+    cmds:
+      - bash scripts/i18n-check.sh
+
+  i18n:watch:
+    desc: Re-check i18n key consistency when i18n/*.toml files change (requires reflex)
+    cmds:
+      - reflex -r 'i18n/.*\.toml$' -s -- bash scripts/i18n-check.sh
+
+  # ── Dev utilities ──────────────────────────────────────────────────────────
+
+  dev:reset:
+    desc: Clear DynamoDB session/vote/listen data and re-seed rankings
+    cmds:
+      - bash {{.SAM_DIR}}/scripts/dev-reset.sh
+
+  # ── Dev log capture (stable pane indices — see .tmuxinator/anthemworld.yml) ─
+  # Window 0 (dev) pane map: 2=hugo, 3=sam-api, 4=cli-watch, 5=i18n-watch, 7=localstack-log
+
+  dev:logs:
+    desc: Capture last 200 lines from all service panes in {{.SESSION}}:dev
+    silent: true
+    cmds:
+      - |
+        if ! tmux has-session -t {{.SESSION}} 2>/dev/null; then
+          echo "Session '{{.SESSION}}' not found. Run 'task dev' first."
+          exit 1
+        fi
+        for entry in "hugo:2" "sam-api:3" "cli-watch:4" "i18n-watch:5" "localstack-log:7"; do
+          label="${entry%%:*}"
+          idx="${entry##*:}"
+          echo ""
+          echo "========== $label (pane $idx) =========="
+          tmux capture-pane -t {{.SESSION}}:dev.$idx -p -S -200 2>/dev/null || echo "(empty)"
+          echo "================================================"
+        done
+
+  dev:logs:hugo:
+    desc: Capture last 200 lines from the hugo pane (pane 2)
+    silent: true
+    cmds:
+      - |
+        tmux has-session -t {{.SESSION}} 2>/dev/null || { echo "Session '{{.SESSION}}' not found"; exit 1; }
+        echo "=== hugo ==="
+        tmux capture-pane -t {{.SESSION}}:dev.2 -p -S -200
+
+  dev:logs:sam:
+    desc: Capture last 200 lines from the sam-api pane (pane 3)
+    silent: true
+    cmds:
+      - |
+        tmux has-session -t {{.SESSION}} 2>/dev/null || { echo "Session '{{.SESSION}}' not found"; exit 1; }
+        echo "=== sam-api ==="
+        tmux capture-pane -t {{.SESSION}}:dev.3 -p -S -200
+
+  dev:logs:cli:
+    desc: Capture last 200 lines from the cli-watch pane (pane 4)
+    silent: true
+    cmds:
+      - |
+        tmux has-session -t {{.SESSION}} 2>/dev/null || { echo "Session '{{.SESSION}}' not found"; exit 1; }
+        echo "=== cli-watch ==="
+        tmux capture-pane -t {{.SESSION}}:dev.4 -p -S -200
+
+  dev:logs:i18n:
+    desc: Capture last 200 lines from the i18n-watch pane (pane 5)
+    silent: true
+    cmds:
+      - |
+        tmux has-session -t {{.SESSION}} 2>/dev/null || { echo "Session '{{.SESSION}}' not found"; exit 1; }
+        echo "=== i18n-watch ==="
+        tmux capture-pane -t {{.SESSION}}:dev.5 -p -S -200
+
+  dev:logs:localstack:
+    desc: Capture last 200 lines from the localstack-log pane (pane 7)
+    silent: true
+    cmds:
+      - |
+        tmux has-session -t {{.SESSION}} 2>/dev/null || { echo "Session '{{.SESSION}}' not found"; exit 1; }
+        echo "=== localstack-log ==="
+        tmux capture-pane -t {{.SESSION}}:dev.7 -p -S -200
