@@ -358,7 +358,7 @@ Use --export to automatically export data to JSON after downloading.`,
 			fmt.Printf("[%d/%d] %s\n", i+1, len(toDownload), source.Name())
 			logger.Infof("Starting download from %s (%d/%d)", source.Name(), i+1, len(toDownload))
 
-			jobs.UpdateJobMetadata(database, jobID, map[string]interface{}{
+			_ = jobs.UpdateJobMetadata(database, jobID, map[string]interface{}{
 				"current_source": source.ID(),
 				"source_index":   i + 1,
 				"source_total":   len(toDownload),
@@ -369,7 +369,7 @@ Use --export to automatically export data to JSON after downloading.`,
 				fmt.Printf("    ✗ Failed: %v\n\n", err)
 				failCount++
 
-				jobs.UpdateJobMetadata(database, jobID, map[string]interface{}{
+				_ = jobs.UpdateJobMetadata(database, jobID, map[string]interface{}{
 					"last_failed_source": source.ID(),
 				})
 				continue
@@ -379,7 +379,7 @@ Use --export to automatically export data to JSON after downloading.`,
 			fmt.Printf("    ✓ Success\n\n")
 			successCount++
 
-			jobs.UpdateJobMetadata(database, jobID, map[string]interface{}{
+			_ = jobs.UpdateJobMetadata(database, jobID, map[string]interface{}{
 				"last_completed_source": source.ID(),
 			})
 		}
@@ -387,7 +387,7 @@ Use --export to automatically export data to JSON after downloading.`,
 		// Complete or fail job based on results
 		if failCount > 0 && successCount == 0 {
 			errMsg := fmt.Sprintf("All %d sources failed", failCount)
-			jobs.FailJob(database, jobID, errMsg)
+			_ = jobs.FailJob(database, jobID, errMsg)
 			logger.Error(errMsg)
 			return fmt.Errorf("%s", errMsg)
 		} else if failCount > 0 {

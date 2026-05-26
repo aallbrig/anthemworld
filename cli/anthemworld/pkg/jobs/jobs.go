@@ -150,7 +150,7 @@ func GetJob(db *sql.DB, jobID string) (*Job, error) {
 		return nil, err
 	}
 
-	json.Unmarshal([]byte(metadataJSON), &job.Metadata)
+	_ = json.Unmarshal([]byte(metadataJSON), &job.Metadata)
 	return job, nil
 }
 
@@ -181,7 +181,7 @@ func GetActiveJobs(db *sql.DB) ([]*Job, error) {
 			return nil, err
 		}
 
-		json.Unmarshal([]byte(metadataJSON), &job.Metadata)
+		_ = json.Unmarshal([]byte(metadataJSON), &job.Metadata)
 		jobs = append(jobs, job)
 	}
 
@@ -212,7 +212,7 @@ func GetLastCompletedJob(db *sql.DB) (*Job, error) {
 		return nil, err
 	}
 
-	json.Unmarshal([]byte(metadataJSON), &job.Metadata)
+	_ = json.Unmarshal([]byte(metadataJSON), &job.Metadata)
 	return job, nil
 }
 

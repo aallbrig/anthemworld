@@ -204,7 +204,7 @@ func (g *GeoJSONSource) Download(ctx context.Context, db *sql.DB, logger *jobs.J
 		
 		// Check if country already exists
 		var existingCount int
-		db.QueryRow(`SELECT COUNT(*) FROM geojson_countries WHERE iso_code = ?`, isoA3).Scan(&existingCount)
+		_ = db.QueryRow(`SELECT COUNT(*) FROM geojson_countries WHERE iso_code = ?`, isoA3).Scan(&existingCount)
 		
 		// UPSERT into geojson_countries table (idempotent)
 		_, err := db.Exec(`
@@ -370,8 +370,8 @@ func (g *GeoJSONSource) GetDataStats(db *sql.DB) (DataStats, error) {
 	
 	// Get storage size (approximate)
 	var pageCount, pageSize int64
-	db.QueryRow(`PRAGMA page_count`).Scan(&pageCount)
-	db.QueryRow(`PRAGMA page_size`).Scan(&pageSize)
+	_ = db.QueryRow(`PRAGMA page_count`).Scan(&pageCount)
+	_ = db.QueryRow(`PRAGMA page_size`).Scan(&pageSize)
 	
 	// Calculate size of geojson_countries table specifically
 	var tableSize int64

@@ -101,7 +101,7 @@ func SeedSpecialEntities(ctx context.Context, db *sql.DB) (*SeedResult, error) {
 			VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 		`, seed.CountryID, seed.AnthemName, seed.NativeName, seed.WikidataID, seed.WikipediaURL)
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			result.Errors++
 			continue
 		}
@@ -121,7 +121,7 @@ func SeedSpecialEntities(ctx context.Context, db *sql.DB) (*SeedResult, error) {
 		`, recordingID, seed.CountryID, seed.AudioFile, audioURL,
 			"audio/ogg", "vocal", "wikimedia-commons", "CC-BY-SA", "standard")
 		if err != nil {
-			tx.Rollback()
+			_ = tx.Rollback()
 			result.Errors++
 			continue
 		}

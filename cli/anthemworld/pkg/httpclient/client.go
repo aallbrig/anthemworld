@@ -98,7 +98,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 
 		// Close previous response body if retrying
 		if resp != nil {
-			io.Copy(io.Discard, resp.Body)
+			_, _ = io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
 		}
 

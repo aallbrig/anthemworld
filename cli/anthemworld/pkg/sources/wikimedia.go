@@ -492,49 +492,6 @@ func (w *WikimediaSource) filterAudioByRelevance(files []string, anthemName, cou
 	return filtered
 }
 
-// getCategoryAudioFiles retrieves audio files from a Wikimedia Commons category
-func (w *WikimediaSource) getCategoryAudioFiles(ctx context.Context, client *httpclient.Client, category string) ([]string, error) {
-	apiURL := fmt.Sprintf("%s?action=query&list=categorymembers&cmtitle=%s&cmlimit=50&format=json",
-		w.url, url.QueryEscape(category))
-
-	resp, err := client.Get(ctx, apiURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var result CategoryMembersResponse
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	// Filter for audio files only (.ogg, .mp3, .wav, .flac)
-	var audioFiles []string
-	for _, member := range result.Query.CategoryMembers {
-		title := member.Title
-		if strings.HasPrefix(title, "File:") {
-			lowerTitle := strings.ToLower(title)
-			if strings.HasSuffix(lowerTitle, ".ogg") ||
-				strings.HasSuffix(lowerTitle, ".mp3") ||
-				strings.HasSuffix(lowerTitle, ".wav") ||
-				strings.HasSuffix(lowerTitle, ".flac") {
-				audioFiles = append(audioFiles, title)
-			}
-		}
-	}
-
-	return audioFiles, nil
-}
-
 // getFileInfo retrieves metadata for a specific file
 func (w *WikimediaSource) getFileInfo(ctx context.Context, client *httpclient.Client, fileName string) (*fileInfo, error) {
 	apiURL := fmt.Sprintf("%s?action=query&titles=%s&prop=imageinfo&iiprop=url|size|mime|mediatype&format=json",
@@ -609,7 +566,7 @@ func (w *WikimediaSource) GetDataStats(db *sql.DB) (DataStats, error) {
 	if err != nil && err != sql.ErrNoRows {
 		return stats, err
 	}
-	fmt.Sscanf(countStr, "%d", &stats.RecordCount)
+	_, _ = fmt.Sscanf(countStr, "%d", &stats.RecordCount)
 
 	err = db.QueryRow(`
 		SELECT value FROM wikimedia_metadata WHERE key = 'last_download'
@@ -619,8 +576,8 @@ func (w *WikimediaSource) GetDataStats(db *sql.DB) (DataStats, error) {
 	}
 
 	var pageCount, pageSize int64
-	db.QueryRow("PRAGMA page_count").Scan(&pageCount)
-	db.QueryRow("PRAGMA page_size").Scan(&pageSize)
+	_ = db.QueryRow("PRAGMA page_count").Scan(&pageCount)
+	_ = db.QueryRow("PRAGMA page_size").Scan(&pageSize)
 	stats.StorageBytes = (pageCount * pageSize) / int64(len(AllSources)+1)
 
 	return stats, nil
@@ -647,7 +604,7 @@ func (w *WikimediaSource) NeedsUpdate(db *sql.DB) (bool, error) {
 	}
 
 	var count int
-	fmt.Sscanf(countStr, "%d", &count)
+	_, _ = fmt.Sscanf(countStr, "%d", &count)
 	if count == 0 {
 		return true, nil
 	}

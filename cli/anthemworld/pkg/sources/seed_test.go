@@ -121,8 +121,8 @@ func TestSeedSpecialEntities(t *testing.T) {
 
 	// Verify DB state
 	var anthemCount, audioCount int
-	db.QueryRow(`SELECT COUNT(*) FROM anthems WHERE country_id IN ('pse','twn','vat')`).Scan(&anthemCount)
-	db.QueryRow(`SELECT COUNT(*) FROM audio_recordings WHERE country_id IN ('pse','twn','vat')`).Scan(&audioCount)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM anthems WHERE country_id IN ('pse','twn','vat')`).Scan(&anthemCount)
+	_ = db.QueryRow(`SELECT COUNT(*) FROM audio_recordings WHERE country_id IN ('pse','twn','vat')`).Scan(&audioCount)
 	if anthemCount != 3 {
 		t.Errorf("expected 3 anthems in DB, got %d", anthemCount)
 	}

@@ -184,7 +184,7 @@ func (w *WikidataSource) Download(ctx context.Context, db *sql.DB, logger *jobs.
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Insert/update anthems
 	inserted := 0
@@ -336,7 +336,7 @@ func (w *WikidataSource) GetDataStats(db *sql.DB) (DataStats, error) {
 	if err != nil && err != sql.ErrNoRows {
 		return stats, err
 	}
-	fmt.Sscanf(countStr, "%d", &stats.RecordCount)
+	_, _ = fmt.Sscanf(countStr, "%d", &stats.RecordCount)
 
 	err = db.QueryRow(`
 		SELECT value FROM wikidata_metadata WHERE key = 'last_download'
@@ -346,8 +346,8 @@ func (w *WikidataSource) GetDataStats(db *sql.DB) (DataStats, error) {
 	}
 
 	var pageCount, pageSize int64
-	db.QueryRow("PRAGMA page_count").Scan(&pageCount)
-	db.QueryRow("PRAGMA page_size").Scan(&pageSize)
+	_ = db.QueryRow("PRAGMA page_count").Scan(&pageCount)
+	_ = db.QueryRow("PRAGMA page_size").Scan(&pageSize)
 	stats.StorageBytes = (pageCount * pageSize) / int64(len(AllSources)+1)
 
 	return stats, nil
@@ -374,7 +374,7 @@ func (w *WikidataSource) NeedsUpdate(db *sql.DB) (bool, error) {
 	}
 
 	var count int
-	fmt.Sscanf(countStr, "%d", &count)
+	_, _ = fmt.Sscanf(countStr, "%d", &count)
 	if count == 0 {
 		return true, nil
 	}

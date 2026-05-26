@@ -21,19 +21,19 @@ func NewJobLogger(db *sql.DB, jobID string) *JobLogger {
 
 // Info logs an info message
 func (l *JobLogger) Info(message string) {
-	LogJob(l.db, l.jobID, "INFO", message)
+	_ = LogJob(l.db, l.jobID, "INFO", message)
 	fmt.Printf("[INFO] %s\n", message)
 }
 
 // Warn logs a warning message
 func (l *JobLogger) Warn(message string) {
-	LogJob(l.db, l.jobID, "WARN", message)
+	_ = LogJob(l.db, l.jobID, "WARN", message)
 	fmt.Printf("[WARN] %s\n", message)
 }
 
 // Error logs an error message
 func (l *JobLogger) Error(message string) {
-	LogJob(l.db, l.jobID, "ERROR", message)
+	_ = LogJob(l.db, l.jobID, "ERROR", message)
 	fmt.Printf("[ERROR] %s\n", message)
 }
 

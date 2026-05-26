@@ -192,7 +192,7 @@ func (f *FactbookSource) Download(ctx context.Context, db *sql.DB, logger *jobs.
 				WHERE id = ?
 			`, ciaCode, nullIfEmpty(symbols), nullIfEmpty(colors), countryID)
 			if err != nil {
-				tx.Rollback()
+				_ = tx.Rollback()
 				errors++
 				continue
 			}
@@ -207,7 +207,7 @@ func (f *FactbookSource) Download(ctx context.Context, db *sql.DB, logger *jobs.
 				WHERE country_id = ?
 			`, nullIfEmpty(history), nullIfEmpty(anthemTitleEn), anthemName, anthemName, countryID)
 			if err != nil {
-				tx.Rollback()
+				_ = tx.Rollback()
 				errors++
 				continue
 			}
@@ -460,7 +460,7 @@ func (f *FactbookSource) GetDataStats(db *sql.DB) (DataStats, error) {
 	}
 	var countStr string
 	_ = db.QueryRow(`SELECT value FROM factbook_metadata WHERE key = 'record_count'`).Scan(&countStr)
-	fmt.Sscanf(countStr, "%d", &stats.RecordCount)
+	_, _ = fmt.Sscanf(countStr, "%d", &stats.RecordCount)
 	_ = db.QueryRow(`SELECT value FROM factbook_metadata WHERE key = 'last_download'`).Scan(&stats.LastUpdated)
 	return stats, nil
 }
@@ -475,7 +475,7 @@ func (f *FactbookSource) NeedsUpdate(db *sql.DB) (bool, error) {
 		return true, nil
 	}
 	var count int
-	fmt.Sscanf(countStr, "%d", &count)
+	_, _ = fmt.Sscanf(countStr, "%d", &count)
 	if count == 0 {
 		return true, nil
 	}
