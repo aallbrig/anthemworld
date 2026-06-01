@@ -15,6 +15,8 @@
  * Response 400: bad request / invalid country_id
  * Response 403: session not found / expired
  */
+// Required first so AWS SDK auto-instrumentation patches the client below.
+const { withTelemetry, recordListen } = require('../shared/telemetry');
 const { GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const db = require('../shared/db');
 const { ok, badRequest, forbidden, serverError, options } = require('../shared/response');
@@ -32,7 +34,7 @@ const DEFAULT_MAX_DURATION_MS = 10 * 60 * 1000;
 /** S-06: Valid country_id — ISO-3166-1 alpha-2 or alpha-3 (2–3 uppercase letters). */
 const COUNTRY_ID_RE = /^[A-Z]{2,3}$/;
 
-exports.handler = async (event) => {
+const handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
     const lang = detectLanguage(event.headers);
 
@@ -150,6 +152,7 @@ exports.handler = async (event) => {
                     ExpressionAttributeValues: values,
                 }));
 
+                recordListen({ country: countryId, listenMs: cappedListenMs });
                 updated++;
             });
 
@@ -161,3 +164,5 @@ exports.handler = async (event) => {
         return serverError(null, lang);
     }
 };
+
+exports.handler = withTelemetry('/listen', handler);

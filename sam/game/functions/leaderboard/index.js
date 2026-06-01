@@ -11,6 +11,8 @@
  * Response 200: { countries: [...], total, generated_at, stats?: {...} }
  *   country: { rank, country_id, name, flag_url, elo_score, wins, losses, total_votes, win_rate }
  */
+// Required first so AWS SDK auto-instrumentation patches the client below.
+const { withTelemetry } = require('../shared/telemetry');
 const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const db = require('../shared/db');
 const { ok, badRequest, serverError, options } = require('../shared/response');
@@ -124,7 +126,7 @@ async function computeVoteStats(weekFilter) {
   return stats;
 }
 
-exports.handler = async (event) => {
+const handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
     const lang = detectLanguage(event.headers);
 
@@ -199,3 +201,5 @@ exports.handler = async (event) => {
         return serverError(null, lang);
     }
 };
+
+exports.handler = withTelemetry('/leaderboard', handler);

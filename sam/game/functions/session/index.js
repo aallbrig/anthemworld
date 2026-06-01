@@ -6,6 +6,8 @@
  * Response 201: { session_id, user_country, created_at }
  * Response 429: rate limited
  */
+// Required first so AWS SDK auto-instrumentation patches the client below.
+const { withTelemetry, recordSessionCreated } = require('../shared/telemetry');
 const { PutCommand, QueryCommand } = require('@aws-sdk/lib-dynamodb');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../shared/db');
@@ -18,7 +20,7 @@ const MAX_SESSIONS_PER_IP   = parseInt(process.env.MAX_SESSIONS_PER_IP || '3', 1
 // Session TTL: 24 hours
 const SESSION_TTL_SECONDS   = 24 * 60 * 60;
 
-exports.handler = async (event) => {
+const handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
     const lang = detectLanguage(event.headers);
 
@@ -63,9 +65,12 @@ exports.handler = async (event) => {
             },
         }));
 
+        recordSessionCreated({ country: userCountry });
         return created({ session_id: sessionId, user_country: userCountry, created_at: createdAt });
     } catch (err) {
         console.error('session error:', err);
         return serverError(null, lang);
     }
 };
+
+exports.handler = withTelemetry('/session', handler);

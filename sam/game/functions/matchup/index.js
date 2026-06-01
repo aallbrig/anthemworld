@@ -17,6 +17,8 @@
  * Response 403: session not found / expired
  * Response 429: matchup daily cap exceeded
  */
+// Required first so AWS SDK auto-instrumentation patches the client below.
+const { withTelemetry, recordMatchupServed } = require('../shared/telemetry');
 const { GetCommand, ScanCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../shared/db');
@@ -29,7 +31,7 @@ const RANKINGS_TABLE          = process.env.RANKINGS_TABLE;
 const LISTEN_TABLE            = process.env.LISTEN_TABLE;
 const MAX_MATCHUPS_PER_SESSION = parseInt(process.env.MAX_MATCHUPS_PER_SESSION || '300', 10);
 
-exports.handler = async (event) => {
+const handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
     const lang = detectLanguage(event.headers);
 
@@ -144,6 +146,7 @@ exports.handler = async (event) => {
             listen_ms:    listenRes.Item?.total_listen_ms || 0,
         });
 
+        recordMatchupServed({ wildcard: isWildcard });
         return ok({
             matchup_id: matchupId,
             is_wildcard: isWildcard,
@@ -155,4 +158,6 @@ exports.handler = async (event) => {
         return serverError(null, lang);
     }
 };
+
+exports.handler = withTelemetry('/matchup', handler);
 

@@ -12,6 +12,8 @@
  *            total_bonus_points, unique_voters, by_region, by_country }
  * }
  */
+// Required first so AWS SDK auto-instrumentation patches the client below.
+const { withTelemetry } = require('../shared/telemetry');
 const { ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const db = require('../shared/db');
 const { ok, badRequest, serverError, options } = require('../shared/response');
@@ -28,7 +30,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 60;
 const cache = new Map();
 
-exports.handler = async (event) => {
+const handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
     const lang = detectLanguage(event.headers);
 
@@ -126,3 +128,5 @@ exports.handler = async (event) => {
         return serverError(null, lang);
     }
 };
+
+exports.handler = withTelemetry('/weekly', handler);

@@ -30,6 +30,8 @@
  * Response 403: session not found / expired
  * Response 429: rate limited
  */
+// Required first so AWS SDK auto-instrumentation patches the client below.
+const { withTelemetry, recordVote } = require('../shared/telemetry');
 const { GetCommand, PutCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../shared/db');
@@ -51,7 +53,7 @@ const DEFAULT_MAX_DURATION_MS = 10 * 60 * 1000;
 /** P1: Minimum interval between votes (ms) — prevents automated rapid voting. */
 const MIN_VOTE_INTERVAL_MS = 3000;
 
-exports.handler = async (event) => {
+const handler = async (event) => {
     if (event.httpMethod === 'OPTIONS') return options();
     const lang = detectLanguage(event.headers);
 
@@ -247,6 +249,7 @@ exports.handler = async (event) => {
             })),
         ]);
 
+        recordVote({ winnerCountry: winner_id, loserCountry: loser_id, voteCategory: vote_category });
         return ok({
             vote_id:       voteId,
             vote_weight,
@@ -263,3 +266,5 @@ exports.handler = async (event) => {
         return serverError(null, lang);
     }
 };
+
+exports.handler = withTelemetry('/vote', handler);
