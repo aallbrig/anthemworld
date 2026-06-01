@@ -19,5 +19,8 @@
   "scripts": {
     "test": "jest",
     "lint": "eslint . --ignore-pattern 'node_modules/**'"
+  },
+  "jest": {
+    "testMatch": ["**/__tests__/**/*.test.js"]
   }
 }
