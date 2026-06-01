@@ -184,6 +184,54 @@ tasks:
     cmds:
       - docker compose logs -f localstack
 
+  # ── Observability (LGTM + raw Prometheus) ──────────────────────────────────
+  # The stack lives under the docker-compose "observability" profile and shares
+  # the anthemworld_default network, so SAM-local Lambdas push OTLP to
+  # otel-collector:4318. Grafana http://localhost:3000  Prometheus :9090
+
+  obs:up:
+    desc: Start the LGTM + Prometheus observability stack (collector, prometheus, tempo, loki, grafana)
+    cmds:
+      - docker compose --profile observability up -d
+      - |
+        echo "Waiting for Grafana on http://localhost:3000 ..."
+        until curl -sf http://localhost:3000/api/health >/dev/null 2>&1; do sleep 2; done
+        echo ""
+        echo "  Observability stack ready:"
+        echo "    Grafana:     http://localhost:3000  (anonymous admin)"
+        echo "    Prometheus:  http://localhost:9090"
+        echo "    Tempo API:   http://localhost:3200"
+        echo "    Loki API:    http://localhost:3100"
+        echo "    OTLP/HTTP:   http://localhost:4318  (otel-collector:4318 in-network)"
+        echo ""
+        echo "  Dashboards: Grafana > Dashboards > Anthem World"
+
+  obs:down:
+    desc: Stop the observability stack (keeps volumes)
+    cmds:
+      - docker compose --profile observability stop otel-collector prometheus tempo loki grafana
+
+  obs:clean:
+    desc: Stop the observability stack and delete its volumes (fresh telemetry)
+    cmds:
+      - docker compose --profile observability rm -sfv otel-collector prometheus tempo loki grafana
+      - docker volume rm anthemworld_prometheus_data anthemworld_tempo_data anthemworld_loki_data anthemworld_grafana_data 2>/dev/null || true
+
+  obs:status:
+    desc: Show observability container status
+    cmds:
+      - docker compose --profile observability ps
+
+  obs:logs:
+    desc: Tail observability stack logs (Ctrl-C to stop)
+    cmds:
+      - docker compose --profile observability logs -f --tail=100 otel-collector prometheus tempo loki grafana
+
+  obs:collector:logs:
+    desc: Tail just the OTel Collector logs
+    cmds:
+      - docker compose --profile observability logs -f --tail=200 otel-collector
+
   # ── Seed ───────────────────────────────────────────────────────────────────
 
   seed:rankings:

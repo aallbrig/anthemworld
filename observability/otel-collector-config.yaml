@@ -1,0 +1,64 @@
+# OpenTelemetry Collector (contrib) — single ingress for the game backend.
+#
+# Lambdas (SAM-local, on the anthemworld_default docker network) push OTLP/HTTP
+# to otel-collector:4318. The collector fans the three signals out to the
+# LGTM-minus-Mimir backends:
+#   - metrics -> Prometheus (scraped from the collector's :8889 exposition)
+#   - traces  -> Tempo (OTLP)
+#   - logs    -> Loki (OTLP)
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+  # Keep the collector itself from being a memory sink in dev.
+  memory_limiter:
+    check_interval: 2s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+
+exporters:
+  # Prometheus scrapes this endpoint (pull model — "raw Prometheus").
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    # Keep names close to the OTel instrument names (dots -> underscores only):
+    # http.server.requests -> http_server_requests (no _total/unit suffixes),
+    # so dashboard queries are predictable.
+    add_metric_suffixes: false
+    resource_to_telemetry_conversion:
+      enabled: false
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]
+  telemetry:
+    logs:
+      level: info
