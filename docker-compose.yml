@@ -26,16 +26,19 @@ services:
   # These share the anthemworld_default network, so SAM-local Lambdas reach the
   # collector at otel-collector:4318.
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.116.0
+    image: otel/opentelemetry-collector-contrib:0.120.0
     container_name: anthemworld-otel-collector
     profiles: ["observability"]
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - ./observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     ports:
-      - "4318:4318"   # OTLP/HTTP (also reachable in-network as otel-collector:4318)
-      - "4317:4317"   # OTLP/gRPC
-      - "8889:8889"   # Prometheus exposition (scraped by Prometheus)
+      # Host-published ports default to the standard values but can be overridden
+      # (e.g. OTLP_HTTP_PORT=4319) if another stack already owns them. In-network
+      # wiring always uses the container ports, so overrides don't affect Lambdas.
+      - "${OTLP_HTTP_PORT:-4318}:4318"   # OTLP/HTTP (in-network: otel-collector:4318)
+      - "${OTLP_GRPC_PORT:-4317}:4317"   # OTLP/gRPC
+      - "${OTELCOL_PROM_PORT:-8889}:8889"   # Prometheus exposition (scraped)
     depends_on:
       - tempo
       - loki
@@ -53,7 +56,7 @@ services:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "9090:9090"
+      - "${PROMETHEUS_PORT:-9090}:9090"
 
   tempo:
     image: grafana/tempo:2.7.0
@@ -64,7 +67,7 @@ services:
       - ./observability/tempo/tempo.yaml:/etc/tempo.yaml:ro
       - tempo_data:/var/tempo
     ports:
-      - "3200:3200"   # Tempo query API
+      - "${TEMPO_PORT:-3200}:3200"   # Tempo query API
 
   loki:
     image: grafana/loki:3.3.2
@@ -75,7 +78,7 @@ services:
       - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
       - loki_data:/loki
     ports:
-      - "3100:3100"
+      - "${LOKI_PORT:-3100}:3100"
 
   grafana:
     image: grafana/grafana:11.4.0
@@ -91,7 +94,7 @@ services:
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     ports:
-      - "3000:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
     depends_on:
       - prometheus
       - tempo
