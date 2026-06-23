@@ -1,0 +1,43 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/tmuxinator.json
+# .tmuxinator/anthemworld.yml
+# Start:   task dev
+# Recycle: task dev:recycle  (run from OUTSIDE this session)
+# Attach:  task dev:attach
+# Logs:    task dev:logs:hugo | dev:logs:sam | dev:logs:cli | dev:logs:i18n | dev:logs:localstack
+#
+# Window 0 — dev (stable pane index map):
+#   0  dev-shell      interactive shell (reserved for developer)
+#   1  dev-shell-2    interactive shell (reserved for developer)
+#   2  hugo           Hugo site         http://localhost:1319
+#   3  sam-api        SAM local API     http://localhost:3005
+#   4  cli-watch      CLI rebuild loop  (reflex on cli/**/*.go changes)
+#   5  i18n-watch     i18n key check    (reflex on i18n/*.toml changes)
+#   6  dev-utils      utility shell     (task dev:reset, ad-hoc commands)
+#   7  localstack-log LocalStack logs   (docker compose logs -f)
+#
+# Window 1 — bootstrap (one-time setup; safe to re-run, all steps are idempotent):
+#   0  bootstrap      LocalStack up → DynamoDB init → seed rankings → SAM build
+#
+# Port reservations: :1319 Hugo, :3005 SAM local API, :4566 LocalStack (shared)
+
+name: anthemworld
+root: ./
+
+windows:
+  - dev:
+      layout: tiled
+      panes:
+        - dev-shell:
+        - dev-shell-2:
+        - hugo: task site:dev
+        - sam-api: task sam:local
+        - cli-watch: task cli:watch
+        - i18n-watch: task i18n:watch
+        - dev-utils: bash -c 'printf "=== dev-utils ===\nCommon commands:\n  task dev:reset       -- clear DynamoDB and re-seed\n  task localstack:down -- stop LocalStack\n  task dev:logs        -- capture all pane logs\n\n"; exec bash'
+        - localstack-log: task localstack:logs
+
+  - bootstrap:
+      layout: main-horizontal
+      panes:
+        - bootstrap: task bootstrap

@@ -4,7 +4,7 @@ Description: Anthem World Game Service — ELO anthem ranking game
 
 Globals:
   Function:
-    Runtime: nodejs20.x
+    Runtime: nodejs24.x
     Timeout: 10
     MemorySize: 256
     Environment:
